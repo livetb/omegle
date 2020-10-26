@@ -41,7 +41,7 @@
         <div class="only-nologin-show logo-bg">
           <img src="/assets/img/logo-text.png" />
         </div>
-        <div id="wait_stranger" class="lds-ring"><div></div><div></div><div></div><div></div></div>
+        <div id="wait_stranger" visible-display="flex" class="lds-ring"><div></div><div></div><div></div><div></div></div>
       </div>
       <div id="you-container"> <!-- 自己容器 -->
          <div class="only-nologin-show logo-bg">
@@ -60,7 +60,7 @@
     <!-- 文字&送礼 -->
     <div id="chat-container">
       <div id="conversation-list">
-        <p id="server-state">Connecting to server...</p>
+        <p id="server_state">No login.</p>
       </div>
       <div id="conversation-bar">
         <div id="gift" class="only-connect-use" disabled="true">
@@ -168,12 +168,39 @@
   <span class="no-thanks" onclick="hideModal(this)">no, thanks</span>
 </div>
 <!-- Popup -->
-<div id="popup" class="popup-modal">
-  <div class="popup-page">
+<div id="popup" visible-display="flex" class="popup-modal">
+  <div class="popup-page" id="test-popup">
     <div class="popup-header">
-      <span class="close-popup">Cancel</span>
+      <span class="close-popup" onclick="hidePopup('test-popup')">Cancel</span>
     </div>
     <h1>Hello World.</h1>
+  </div>
+  <!-- Stripe -->
+  <div class="popup-page" id="edit_baseinfo_popup" visible-display="flex">
+    <div class="popup-header">
+      <span class="close-popup" onclick="hidePopup('edit_baseinfo_popup')">Cancel</span>
+    </div>
+    <div class="popup-content">
+      <div class="cover">
+        <label>
+          <input type="file" id="cover" />
+          <img id="cover_show" src="/assets/img/logo-icon.png" />
+        </label>
+        <span class="tips-upfile">*please upload a profile photo</span>
+      </div>
+      <!-- nickname -->
+      <div class="nickname">
+        <h2>Nickname</h2>
+        <input type="text" id="nickname" />
+      </div>
+      <!-- age -->
+      <div class="age">
+        <h2>How old are you?</h2>
+        <input type="number" id="age" max="999" maxlength="3" value="18"/>
+      </div>
+    </div>
+    <!-- Next -->
+    <span id="save_baseinfo">Next</span>
   </div>
 </div>
 <!-- Toast -->

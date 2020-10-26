@@ -1,4 +1,9 @@
 /* ------------------------------------ Toolkit ------------------------------------ */
+function showView(ele, displayName){
+  if(!ele) throw "Element not exists";
+  if(displayName) ele.style.display = displayName;
+  else ele.style.display = ele.getAttribute("visible-display") || "inline-block";
+}
 function isEmpty(str){
   if(typeof str !== "string") return true;
   if(str.replace(/(^s*)|(s*$)/g, "").length == 0) return true;
@@ -115,7 +120,7 @@ var uiConfig = {
       localStorage.setItem("user", JSON.stringify(authResult.user));
       (async () => {
         var tokenLoader = document.getElementById("tokenLoader");
-        tokenLoader.style.display = "block";
+        showView(tokenLoader, "block");
         tokenLoader.querySelector("span").innerText = "Login Success!";
         setTimeout(() => {
           hideLogin();
@@ -148,7 +153,6 @@ var uiConfig = {
  * 
  */
 function initView(user){
-  // document.getElementById("gift_modal").style.display = "flex";
   console.log("InitView => ", user);
   var onlyLoginShow = document.querySelectorAll(".only-login-show");
   var onlyNologinShow = document.querySelectorAll(".only-nologin-show");
@@ -156,6 +160,10 @@ function initView(user){
   for(var i=0; i<onlyLoginShow.length; i++) onlyLoginShow[i].style.display = user ? "inline-block" : "none";
   console.log("Only nologin show => ", onlyNologinShow.length);
   for(var j=0; j<onlyNologinShow.length; j++) onlyNologinShow[j].style.display = user ? "none" : "inline-block";
+  
+  if(user){
+    views.youContainer.style.backgroundImage = `url(${user.photoURL})`;
+  }
 }
 /**
  * 检测是否登录
@@ -165,9 +173,10 @@ firebase.auth().onAuthStateChanged(function (user) {
   if (user) {
     config.user = user;
     hideLogin();
-    connectSocket(); //与服务器简历连接
+    connectSocket(); //与服务器建立连接
+    addSaveBaseinfoListener();
   } else {
-    // showLogin();
+    // showLogin()
   }
 });
 /**
@@ -189,8 +198,7 @@ function login(){
     nickName: config.user.displayName,
     sign: md5Sign(config.user.uid, nowTime),
     appId: 43,
-    thirdType: 6,
-    avater: config.user.photoURL
+    thirdType: 6
   }
   axios.post(url, dataObj).then(res => {
     console.log("Login => ", res.data);
@@ -229,10 +237,13 @@ function logout(){
 }
 /* ------------------------------------ Config and Listener ------------------------------------ */
 const views = {
+  strangerContainer: document.getElementById("stranger-container"),
+  youContainer: document.getElementById("you-container"),
   waitStranger: document.getElementById("wait_stranger"),
   startOrNext: document.getElementById("start-or-next"),
   cancelNext: document.getElementById("cancel-next"),
   conversationList: document.getElementById("conversation-list"),
+  serverState: document.getElementById("server_state"),
   gift: document.getElementById("gift"),
   youInput: document.getElementById("you-input"),
   send: document.getElementById("send-msg")
@@ -240,7 +251,7 @@ const views = {
 var config = {
   isTest: true,
   userRole: "audience",
-  videoScale: 0.8, //视频宽高比例
+  videoScale: 0.7, //视频宽高比例
   heartbeat: 0, 
   domain: "t.livego.live",
   strangerUid: null,
@@ -341,6 +352,7 @@ function callStranger(){
       var result = res.data;
       initAgoraOption(result.data);
       initAgora(true);
+      config.userRole = "audience";
     }else throw `Status : ${res.data.status}`;
   }).catch(error => {
     console.error("Call Stranger Error.", error);
@@ -355,7 +367,7 @@ function videoCallYou(obj){
   console.log("Receive Video Call.",obj);
   config.chatNo = obj.chatNo;
   initAgoraOption(obj);
-  config.strangerUid = obj.remoteUid;
+  setStrangerUid(obj.remoteUid);
   // initAgora();
   config.userRole = "host";
   console.log("2.平台服务器转发用户发起的视频通话给主播");
@@ -372,7 +384,7 @@ function answerCall(){
     status: 1
   }
   axios.post(url, dataObj, { headers: getHeaders() }).then(res => {
-    console.error("3.主播接起视频通话 ", res.data);
+    console.debug("3.主播接起视频通话 ", res.data);
     toast("3.主播接起视频通话",null, "success");
   }).catch(error => {
     console.error("3.主播接起视频通话 - 错误", error);
@@ -402,11 +414,11 @@ function youHangup(){
     console.log("5.接起视频通话后挂断电话", res.data);
     toast("5.接起视频通话后挂断电话");
   }).catch(error => {
-    console.log("5.接起视频通话后挂断电话 - 错误", res.data);
+    console.log("5.接起视频通话后挂断电话 - 错误", error);
     toast("5.接起视频通话后挂断电话 - 错误");
   });
-  leaveChannel();
   config.chatNo = null;
+  leaveChannel(true);
 }
 /**
  * 6.平台服务端转发挂断电话给对方
@@ -415,20 +427,14 @@ function strangerHangupYou(obj){
   console.log("6.平台服务端转发挂断电话给对方", obj);
   toast("6.平台服务端转发挂断电话给对方"+obj.chatNo);
   if(obj.chatNo = config.chatNo) {
-    leaveChannel();
+    leaveChannel(true);
     toast("ChatNo一致，挂断电话。");
   }
 }
 /** 7.平台服务端会每隔10s检查商户的余额是否满足当前通话，若是不满足，会主动发 CC 命令给用户端和主播端 */
-/**
- * 对面挂断电话或者断线
- */
-function strangerHangup(){
-  toast("Stranger already leave.", null, null, 5000);
-  document.querySelector("#stranger-container > div:last-child").remove();
-}
 function debugCall(){
   console.log(`YouUid: ${getYouUid()} - strangerUid: ${getStrangerUid()}`);
+  console.log(`You Chatno : ${config.chatNo}`);
   console.log("You Role: ", config.userRole);
   console.log("Option: ", option);
 }
@@ -480,7 +486,7 @@ function commitReceiveMsg(){
 function connectSocket(){
   if(!config.user) throw "No Login";
   console.log("ConnectSocket");
-  var serverState = document.getElementById("server-state");
+  views.serverState.innerText = "Connecting to server...";
 
   // Create WebSocket connection.
   window.socket = new WebSocket(`wss://${config.domain}/ws?mid=testABC&timestamp=${Date.now()}&uid=${getYouUid()}&sign=1111`);
@@ -488,7 +494,7 @@ function connectSocket(){
   // Connection opened
   socket.addEventListener('open', function (event) {
     initConnect(window.socket);
-    serverState.innerText = "Already Connected."
+    views.serverState.innerText = "Already Connected."
     startHeartBeat();
     console.log("Already connected server \n", event);
   });
@@ -513,7 +519,7 @@ function connectSocket(){
   socket.addEventListener('close', function(event){
     window.socket = null;
     initConnect(window.socket);
-    serverState.innerText = "Disconnect Server.";
+    views.serverState.innerText = "Disconnect Server.";
     console.log("Disconnect server \n", event);
   });
 }
@@ -525,7 +531,9 @@ function startHeartBeat(){
     if(window.socket){
       window.socket.send('{"version":5,"key":"HB","value":1}');
       startHeartBeat();
-    }else console.log("Socket Disconnect, Stop Heartbeat");
+    }else {
+      console.log("Socket Disconnect, Stop Heartbeat");
+    }
   }, 10 * 1000);
 }
 /**
@@ -536,17 +544,28 @@ function getStrangerUid(){
     return config.strangerUid;
   }
 }
+function setStrangerUid(uid){
+  if(!uid) {
+    config.strangerUid = null;
+    views.serverState.innerText = "No match stranger.";
+  }else config.strangerUid = uid;
+}
 function getYouUid(){
   try{
-    if(config.user.uid === "FdWwVWVhiwMItpbLdRZ0HkyyixG2") return "24680";
+    if(config.user.uid === "YFa0FqVUpybz72Qm9MmZCw4troq2") return "24680";
     else return "13579";
   }catch(error){
     return null;
   }
 }
-/**
- * Only Login Excute.
- */
+function setStrangerState(state, msg) {
+  switch(state){
+    case "loading":
+      console.log("loading"); break;
+    case "noMatch":
+      console.log("noMatch"); break;
+  }
+}
 function getRandomStranger(){
   if(config.chatNo){
     toast("正在通话中，主动挂断电话");
@@ -557,18 +576,11 @@ function getRandomStranger(){
     console.log("Success + get random stranger + ", res.data);
     var result = res.data;
     if(result.msg === "success") {
-      config.strangerUid = result.data.userInfo.uid;
+      setStrangerUid(result.data.userInfo.uid);
       initAgoraOption(result.data);
-      // initAgora(true);
-      if(getYouUid() < getStrangerUid()){
-        console.log("用户发起视频通话");
-        toast("1 - 用户发起视频通话");
-        callStranger();
-        config.userRole = "audience";
-      }else{
-        config.userRole = "host";
-      }
-      toast("You Role: "+ config.userRole);
+      toast("1 - 用户发起视频通话");
+      callStranger();
+      views.strangerContainer.style.backgroundImage = `url(${res.data.data.userInfo.avatar})`;
     }
     else throw "Failed : GetRandomStranger";
   }).catch(error => {
@@ -578,7 +590,7 @@ function getRandomStranger(){
 }
 function addChatListener(){
   views.startOrNext.addEventListener("change", function(){
-    return;
+    // return;
     var isNext = this.checked;
     if(!config.user){
       this.checked = false;
@@ -599,13 +611,13 @@ function addChatListener(){
       initAgora();
       config.callYouTime = 0;
       config.noFirstMatch = true;
-      views.waitStranger.style.display = "block";
+      showView(views.waitStranger);
       views.startOrNext.checked = false;
       document.querySelector(".start-or-cancel").classList.add("have-stranger");
       config.noFirstMatch = true;
       return;
     }else if(callYouTime > 1){
-      toast("长时间未接听对方通话邀请，服务器自动挂断", null, "warn", 5 * 1000);
+      toast("长时间未接听对方通话邀请，服务器自动挂断", "准备主动发起请求", "warn", 5 * 1000);
     }else {
       toast("未收到对方请求，准备主动发起请求。");
     }
@@ -614,7 +626,7 @@ function addChatListener(){
       toast("Already Login. Start match random stranger.");
       getRandomStranger();
       config.noFirstMatch = true;
-      views.waitStranger.style.display = "block";
+      showView(views.waitStranger);
       views.startOrNext.checked = false;
       document.querySelector(".start-or-cancel").classList.add("have-stranger");
     }else {
@@ -702,12 +714,21 @@ function publishLocalStream(){
   rtc.client.publish(rtc.localStream, function (err) {
     console.log("3.2 - publish failed");
     console.error(err);
+    config.inPublishLocalStream = false;
   });
   toast("Publish localstream : "+config.userRole, null,null, 10 * 1000);
   if(config.userRole === "host") {
     toast("AnswerCall => Publish localstream : "+getYouUid(), null,null, 10 * 1000);
     answerCall();
   }
+}
+function unPublishLocalStream(){
+  toast("取消发布本地流",null, null, 5 * 1000);
+  rtc.client.unpublish(rtc.localStream, function(err){
+    toast("取消发布本地流失败", JSON.stringify(err), "warn", 5 * 1000);
+    console.log("UnPublish LocalStream Error : ", err);
+  });
+  config.inPublishLocalStream = false;
 }
 /**
  * 
@@ -736,6 +757,7 @@ function addStreamListener(){
     console.info("------ Stream subscribed. ------ ");
     remoteStream.play("stranger-container", {fit: "contain"});
     console.log('stream-subscribed remote-uid: ', id);
+    console.log("对方发布了流");
   });
 
   rtc.client.on("stream-removed", function (evt) {
@@ -750,21 +772,25 @@ function addStreamListener(){
     }
     console.log('stream-removed remote-uid: ', id);
   });
-  // alreadyAddStreamListener = true;
+  // 
   rtc.client.on("stream-unpublished", function(evt) {
-    toast("local stream unpublished", null, null, 3 * 1000);
+    toast("local stream unpublished", evt, null, 3 * 1000);
+    console.log("local stream unpublished : ", evt);
+  });
+  rtc.client.on("stream-published", function(evt) {
+    toast("local stream published");
+    console.log("local stream published : ", evt);
+    config.inPublishLocalStream = true;
   });
 }
 /**
  * 
  */
-function leaveChannel(){
-  config.strangerUid = null;
+function leaveChannel(unPublish){
+  setStrangerUid(null);
   config.chatNo = null;
   if(!rtc.client) return;
-  rtc.client.unpublish(rtc.localStream, function(err){
-    toast("取消发布本地流失败", JSON.stringify(err), "warn", 5 * 1000);
-  });
+  if(unPublish) unPublishLocalStream();
   rtc.client.leave(function () {
     // Stop playing the local stream
     if(!rtc.localStream) return;
@@ -792,7 +818,7 @@ function leaveChannel(){
     var curGift = gifts[i];
     curGift.addEventListener("click", function(){
       sendGift(this.getAttribute("alt"));
-    })
+    });
   }
 })();
 function showModal(id){
@@ -1019,14 +1045,75 @@ var loading = function(isLoading) {
     document.querySelector("#button-text").classList.remove("hidden");
   }
 };
+/* ------------------------------------ popup ------------------------------------ */
+function showPopup(eleId) {
+  var popup = document.getElementById("popup");
+  var popPage = document.getElementById(eleId);
+  showView(popPage);
+  if(!eleId) throw "NO such popup";
+  showView(popup, "flex");
+  popPage.classList.add("pop-slide-in");
+  popPage.onanimationend = function(){
+    popPage.classList.remove("pop-slide-in");
+  }
+}
+function hidePopup(eleId) {
+  var popup = document.getElementById("popup");
+  var popPage = document.getElementById(eleId);
+  if(!eleId) throw "NO such popup";
+  popPage.classList.add("pop-slide-out");
+  popPage.onanimationend = function(){
+    popPage.classList.remove("pop-slide-out");
+    showView(popup, "none");
+    showView(popPage, "none");
+  }
+}
 
+function saveBaseinfo(){
+  var url = `https://${config.domain}/api/user/setProfile`;
+  var cover = document.getElementById("cover").files[0];
+  var nickname = document.getElementById("nickname").value;
+  var age = +document.getElementById("age").value;
+  console.log("Cover: ", cover);
+  console.log("Nickname: ",nickname);
+  console.log("Age: ",age);
+  if(!nickname || !age) {
+    toast("Your nickname or age is invalid value.", "Please check again.", "warn", 2000);
+    return;
+  }
+  var form = new FormData();
+  if(cover) form.append("filename", cover);
+  form.append("nickname", nickname);
+  form.append("age", age);
+  axios.post(url, form, { headers: getHeaders()}).then(res => {
+    console.log("SaveBaseInfo => ", res.data);
+    if(res.data.msg === "success") {
+      toast("Success",null, "success", 3000);
+    }else throw res.data.msg;
+  }).catch(error => {
+    toast("Failed", error, "error", 3000);
+  });
+}
+function addSaveBaseinfoListener(){
+  var save = document.getElementById("save_baseinfo");
+  save.onclick = saveBaseinfo;
+  var cover = document.getElementById("cover");
+  document.getElementById("nickname").value = config.user.displayName;
+  var coverShow = document.getElementById("cover_show");
+  coverShow.src = config.user.photoURL;
+  cover.onchange = function(){
+    coverShow.src = URL.createObjectURL(cover.files[0]);
+    var tips = document.querySelector(".cover .tips-upfile");
+    if(tips) tips.remove();
+  }
+}
 /* ------------------------------------ Toast ------------------------------------ */
 function delayRemoveToast(itemNode, duration){
   setTimeout(function(){
     itemNode.classList.add("remove-toast-item");
-    setTimeout(function(){
+    itemNode.onanimationend = function(){
       itemNode.remove();
-    }, 500);
+    }
   }, duration);
 }
 /**

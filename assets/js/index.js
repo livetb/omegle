@@ -87,14 +87,14 @@ function md5Sign(firebaseUid, requestTime){
 }
 /* ------------------------------------ Login ------------------------------------ */
 const firebaseConfig = {
-  apiKey: "AIzaSyCzlz-GhAwy47nRq-o2402JwulHTXbpOhY",
-  authDomain: "livetube-xyz.firebaseapp.com",
-  databaseURL: "https://livetube-xyz.firebaseio.com",
-  projectId: "livetube-xyz",
-  storageBucket: "livetube-xyz.appspot.com",
-  messagingSenderId: "499030623907",
-  appId: "1:499030623907:web:830069d4fbc441f9b56116",
-  measurementId: "G-JSNJPVVZPB"
+  apiKey: "AIzaSyAljPP_UOqSqydEXf-6Nnc9pkUzmOxTLWM",
+  authDomain: "omegle-9c76d.firebaseapp.com",
+  databaseURL: "https://omegle-9c76d.firebaseio.com",
+  projectId: "omegle-9c76d",
+  storageBucket: "omegle-9c76d.appspot.com",
+  messagingSenderId: "1021094019226",
+  appId: "1:1021094019226:web:c7f100478dcd4c1f2c9f23",
+  measurementId: "G-KQ6P6Z7G76"
 };
 // Initialize Firebase
 firebase.initializeApp(firebaseConfig);
@@ -240,7 +240,7 @@ const views = {
 var config = {
   isTest: true,
   userRole: "audience",
-  videoScale: 0.6, //视频宽高比例
+  videoScale: 0.8, //视频宽高比例
   heartbeat: 0, 
   domain: "t.livego.live",
   strangerUid: null,
@@ -275,16 +275,12 @@ function throttle(fn, seconds, tipsFun){
     }, seconds * 1000);
   }
 }
-function scrollListener(){
-  console.log(new Date().toLocaleString()," => Throttle ScrollListener : ", arguments);
-}
-window.addEventListener("scroll", throttle(scrollListener, 2));
 /**
  * when window resize to excute func.
  * @param {Function} func 
  */
 function addResizeListener(func){
-  window.addEventListener("resize", debounce(func, 0.5));
+  window.addEventListener("resize", debounce(func, 0.02));
 }
 function changeYouAndStrangerSize(){
   var you = document.getElementById("you-container");
@@ -582,6 +578,7 @@ function getRandomStranger(){
 }
 function addChatListener(){
   views.startOrNext.addEventListener("change", function(){
+    return;
     var isNext = this.checked;
     if(!config.user){
       this.checked = false;

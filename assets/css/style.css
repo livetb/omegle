@@ -18,6 +18,12 @@ body {
   margin: auto;
   box-shadow: 0 0 1px 0 rgb(211, 212, 213);
 }
+@media screen and (min-width: 900px) {
+  .auto-padding { padding-left: 1.5rem; padding-right: 1.5rem; }
+}
+@media screen and (max-width: 900px) {
+  .auto-padding { padding-left: 1rem; padding-right: 1rem; }
+}
 input::-webkit-outer-spin-button,
 input::-webkit-inner-spin-button {
   -webkit-appearance: none;
@@ -72,11 +78,13 @@ input[type="number"]{
 /* ------------------------------------ Header ------------------------------------ */
 #header {
   display: flex;
-  overflow-x: hidden;
+  align-items: flex-end;
   justify-content: space-between;
-  box-shadow: 0px 10px 10px -8px #6F6F6F;
-  padding: 0.75rem 0.5rem;
-}
+  box-shadow: 0px 10px 10px -5px #6f6f6f61;
+  position: relative;
+  padding-top: 0.75rem;
+  padding-bottom: 0.5rem;
+} 
 .header-left, .header-right {
   display: flex;
 }
@@ -86,13 +94,15 @@ input[type="number"]{
 }
 
 .header-left img {
-  height: 3rem;
+  height: 2rem;
   margin-right: 0.5rem;
 }
 /* .logo-icon {
   animation: rotateLogoIcon 5s linear infinite ;
 } */
-
+.logo {
+  margin-right: 3rem;
+}
 .login-and-signup {
   display: flex;
   justify-content: flex-end;
@@ -103,7 +113,7 @@ input[type="number"]{
   line-height: 1.1rem;
   border: 0.1rem solid #298FFE;
   border-radius: 0.2rem;
-  font-size: 0.7rem;
+  font-size: 0.6rem;
   text-align: center;
   cursor: pointer;
   transition: all 0.5s ease-in-out;
@@ -136,6 +146,7 @@ input[type="number"]{
   color: #6DB6FF;
   font-size: 1.4rem;
   line-height: 1.4rem;
+  margin-top: 0.5rem;
   font-weight: 600;
 }
 .online-now::after {
@@ -159,6 +170,12 @@ input[type="number"]{
   justify-content: space-between;
   margin-right: 1rem;
 }
+.logo-bg > img {
+  position: absolute;
+  left: 2rem;
+  bottom: 2rem;
+  height: 2.5rem;
+}
 #wait_stranger {
   width: 100%;
   height: 100%;
@@ -167,7 +184,7 @@ input[type="number"]{
 #chat-container {
   display: flex;
   min-width: 300px;
-  flex: 5;
+  flex: 4;
   align-items: center;
   flex-direction: column;
   justify-content: space-between;
@@ -183,6 +200,7 @@ input[type="number"]{
 }
 #stranger-container, #you-container {
   box-shadow: 0 0 1px 0 #aaa;
+  background-color: #555555;
 }
 #stranger-container > *:not(#wait_stranger), #you-container > *:not(#wait_stranger) {
   width: 100%;
@@ -213,7 +231,7 @@ input[type="number"]{
 }
 .start-or-cancel {
   width: 10rem;
-  height: 2.5rem;
+  height: 3rem;
   margin: auto;
   cursor: pointer;
   display: flex;
@@ -224,6 +242,7 @@ input#start-or-next {
 input#start-or-next + label {
   display: inline-block;
   width: 100%;
+  height: 100%;
   margin: 0;
   transition: all 0.5s ease-in-out;
 }
@@ -238,7 +257,7 @@ input#start-or-next + label + #cancel-next {
   font-family: Helvetica;
   text-align: center;
   font-weight: 600px;
-  line-height: 2.5rem;
+  line-height: 3rem;
   border-top-right-radius: 0.4rem;
   border-bottom-right-radius: 0.4rem;
   background-color: #34a853;
@@ -255,14 +274,15 @@ input#start-or-next:checked + label + #cancel-next {
   display: inline-block;
   text-align: center;
   width: 100%;
-  height: 2.5rem;
-  line-height: 2.5rem;
+  height: 3rem;
+  line-height: 3rem;
   font-size: 1rem;
   color: white;
   font-weight: 600;
   font-family: Helvetica;
   border-radius: 0.4rem;
   background: #4285f4;
+  /* background: linear-gradient(180deg, #53C2FF 0%, #298FFE 100%); */
   transition: all 0.5s ease-in-out;
 }
 .have-stranger #start-or-next + label::after {
@@ -276,7 +296,7 @@ input#start-or-next:checked + label + #cancel-next {
 }
 #start-or-next + label:hover::after {
   cursor: pointer;
-  box-shadow: 0 0 10px 0 #ea4335aa;
+  box-shadow: 0 0 10px 0 #2990fe69;
 }
 
 #conversation-list::-webkit-scrollbar {
@@ -286,6 +306,7 @@ input#start-or-next:checked + label + #cancel-next {
   width: 100%;
   overflow-y: scroll;
   flex: 1;
+  background: #FFF;
   padding: 0.5rem;
   border: 1px #868686 solid;
   margin-bottom: 1rem;
@@ -341,6 +362,20 @@ input#start-or-next:checked + label + #cancel-next {
 #conversation-bar > * {
   height: 3rem;
 }
+#gift {
+  cursor: pointer;
+  width: 3rem;
+}
+#gift > img {
+  width: 100%;
+  height: 100%;
+}
+#you-input {
+  resize: none;
+  flex: 1;
+  margin: 0 1rem;
+  border: 1px solid #979797;
+}
 #send-msg {
   background-color: #298FFE;
   width: 3rem;
@@ -349,14 +384,7 @@ input#start-or-next:checked + label + #cancel-next {
   align-items: center;
   justify-content: center;
   cursor: pointer;
-}
-#gift {
-  cursor: pointer;
-  width: 3rem;
-}
-#gift > img {
-  width: 100%;
-  height: 100%;
+  border: 1px solid #979797;
 }
 #send-msg > span:first-child {
   font-size: 0.8rem;
@@ -367,21 +395,19 @@ input#start-or-next:checked + label + #cancel-next {
   font-size: 0.6rem;
   color: #99CCFF;
 }
-
-#you-input {
-  resize: none;
-  flex: 1;
-  margin: 0 1rem;
-  border: 1px solid #979797;
-}
-
-@media screen and ( max-width: 800px ) {
-  #main { flex-direction: column; padding: 0.5rem; } 
+@media screen and ( max-width: 750px ) {
   .talk-to-strangers { display: none; }
+}
+@media screen and ( max-width: 700px ) {
+  #main { flex-direction: column; padding: 0.5rem; }
+  #header { align-items: flex-start; }
+  .logo { margin: 0; }
   #you-and-stranger { margin: 0 0 1rem 0; width: 100%; }
   #chat-container { flex-direction: column-reverse; width: 100%; }
   .online-now { display: none; }
   #conversation-bar { margin: 0 0 1rem 0;}
+}
+@media screen and ( max-width: 500px ) {
   .logo-icon + img { display: none; }
 }
 /* ------------------------------------ Modal & Dialog ------------------------------------ */
@@ -435,6 +461,38 @@ input#start-or-next:checked + label + #cancel-next {
   justify-content: center;
   flex-direction: column;
 }
+/* ------------------------------------ Popup ------------------------------------ */
+.popup-modal {
+  position: fixed;
+  z-index: 1500;
+  width: 100%;
+  height: 100vh;
+  left: 0;
+  top: 0;
+  display: flex;
+  align-items: flex-end;
+  background-color: rgba(0, 0, 0, 0.35);
+  display: none;
+}
+.popup-page {
+  height: 80vh;
+  width: 100%;
+  background-color: #FFF;
+  box-shadow: 0 -2px 5px 0px #aaa;
+}
+.popup-header {
+  height: 2rem;
+  line-height: 2rem;
+  text-align: right;
+  box-shadow: 0 1px 1px 0 #aaa;
+}
+.close-popup {
+  display: inline-block;
+  line-height: 1.5rem;
+  padding: 0 1rem;
+  color: #298FFE;
+  font-size: 0.8rem;
+}
 /* ------------------------------------ Login ------------------------------------ */
 #login_modal {
   z-index: 2000;
@@ -444,6 +502,10 @@ input#start-or-next:checked + label + #cancel-next {
   background-color: #FFF;
   border-radius: 0.5rem;
   box-shadow: 0 0 10px #FFF;
+}
+@media screen and ( max-width: 500px ){
+  .login-dialog { padding: 1rem 1rem; border-radius: 0; }
+  .dialog-close { right: 0; }
 }
 .only-nologin-show {
   display: none;

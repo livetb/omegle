@@ -175,9 +175,8 @@ function initView(user){
   for(var j=0; j<onlyNologinShow.length; j++) onlyNologinShow[j].style.display = user ? "none" : "inline-block";
   var mode = getQueryVariable("mode");
   if(mode === "select" && !user) showLogin();
-  
   if(user){
-    views.youContainer.style.backgroundImage = `url(${user.photoURL})`;
+    views.youContainer.style.backgroundImage = `url(${localStorage.getItem("avatar") || user.photoURL})`;
   }
 }
 /**
@@ -223,7 +222,7 @@ function login(){
       localStorage.setItem("token", data.data.token);
       localStorage.setItem("uid", data.data.user.uid);
       localStorage.setItem("id", data.data.user.id);
-      // localStorage.setItem("user", JSON.stringify(data.data.user));
+      localStorage.setItem("avatar", data.data.user.avatar);
       toast("Login Success.",null, "success");
       connectSocket();
     }else throw data.msg;
@@ -604,7 +603,7 @@ function getRandomStranger(){
     youHangup();
   }
   var url = `https://${config.domain}/api/together`;
-  axios.post(url, {  }, { headers: getHeaders()}).then(res => {
+  axios.post(url, { code: getQueryVariable("id") }, { headers: getHeaders()}).then(res => {
     console.log("Success + get random stranger + ", res.data);
     var result = res.data;
     if(result.msg === "success") {

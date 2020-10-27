@@ -3,6 +3,17 @@ html {
   font-size: 20px;
   background-color: #FFF;
 }
+body{
+  font-size: 10px;  
+}
+body.hide-scroll-bar::-webkit-scrollbar{
+  display: none;
+}
+body.hide-scroll-bar {
+  overflow: -moz-scrollbars-none;
+  -ms-overflow-style: none;
+  scrollbar-width: 0;
+}
 body {
   padding: 0;
   margin: 0;
@@ -315,6 +326,9 @@ input#start-or-next:checked + label + #cancel-next {
   padding: 0.5rem;
   border: 1px #868686 solid;
   margin-bottom: 1rem;
+  overflow: -moz-scrollbars-none;
+  -ms-overflow-style: none;
+  scrollbar-width: 0;
 }
 #conversation-list > * {
   margin: 0 0 0.5rem 0;
@@ -558,6 +572,13 @@ input#start-or-next:checked + label + #cancel-next {
   text-align: center;
 }
 /* ------------------------------------ Login ------------------------------------ */
+#firebaseui-auth-container {
+  min-width: 350px;
+}
+.firebaseui-form-actions > button {
+  /* 邮箱登录按钮显示异常 */
+  max-width: fit-content;
+}
 #login_modal {
   z-index: 2000;
 }

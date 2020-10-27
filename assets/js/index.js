@@ -61,9 +61,9 @@ function getHeaders(){
     "mid": "testABC",
     "timestamp": nowTime,
     "uid": +getYouUid(),
-    "sign": config.firebaseLogin ? md5Sign(config.user.uid, nowTime) : 1111,
+    "sign": config.firebaseLogin ? md5Sign(localStorage.getItem("uid"), nowTime) : 1111,
     "Content-Type": "application/json",
-    "authorization": "JHGK2020HGHDKjhq"
+    "authorization": localStorage.getItem("token")
   }
 }
 /**
@@ -78,24 +78,31 @@ function UserError(msg, status){
 UserError.prototype.toString = function(){
   return "UserError : " + this.msg;
 }
-window.addEventListener("error", function(e){
-  console.log("Listener Error. ",e.error);
-  if(e.error instanceof UserError){
+window.onerror = function(message, source, lineno, colno, error){
+  console.log("Listener Error. ",error);
+  if(error instanceof UserError){
     var title = null, type = null;
-    switch(e.error.status){
+    switch(error.status){
       case 0: title = "Error"; type = "error"; break;
       case 1: title = "Warning"; type = "warning" ; break;
     }
-    if(title && type) toast(title, e.error.msg, type, 3000);
+    if(title && type) toast(title, error.msg, type, 3000);
   }
-  return true;
-});
-
+}
+function thorwAnError(msg){
+  msg = msg ? msg : "Default Error";
+  throw msg;
+}
 /* ------------------------------------ MD5 ------------------------------------ */
-function md5Sign(firebaseUid, requestTime){
+function md5Login(firebaseUid, requestTime){
   var key = "fjsihaueoewh3453453rgrsdkJ(fjeKHA3eJhnj,fjo43";
   var str = firebaseUid+requestTime+key;
-  // var str = "333333331223";
+  return hex_md5(str).toUpperCase();
+}
+function md5Sign(timestamp, uid) {
+  var mid = "testABC";
+  var key = "fjsihaueoewh3453453rgrsdkJ(fjeKHA3eJhnj,fjo43";
+  var str = mid + timestamp + uid + key;
   return hex_md5(str).toUpperCase();
 }
 /* ------------------------------------ Login ------------------------------------ */
@@ -143,7 +150,7 @@ var uiConfig = {
   },
   // Will use popup for IDP Providers sign-in flow instead of the default, redirect.
   signInFlow: "popup", //redirect or popup
-  signInSuccessUrl: "/admin.html?login=success",
+  signInSuccessUrl: "/",
   signInOptions: [
     // Leave the lines as is for the providers you want to offer your users.
     firebase.auth.GoogleAuthProvider.PROVIDER_ID,
@@ -166,6 +173,8 @@ function initView(user){
   for(var i=0; i<onlyLoginShow.length; i++) onlyLoginShow[i].style.display = user ? "inline-block" : "none";
   console.log("Only nologin show => ", onlyNologinShow.length);
   for(var j=0; j<onlyNologinShow.length; j++) onlyNologinShow[j].style.display = user ? "none" : "inline-block";
+  var mode = getQueryVariable("mode");
+  if(mode === "select" && !user) showLogin();
   
   if(user){
     views.youContainer.style.backgroundImage = `url(${user.photoURL})`;
@@ -176,7 +185,8 @@ function initView(user){
  */
 firebase.auth().onAuthStateChanged(function (user) {
   initView(user);
-  if (user) {
+  var uid = localStorage.getItem("uid");
+  if (user && uid) {
     config.user = user;
     hideLogin();
     connectSocket(); //与服务器建立连接
@@ -202,7 +212,7 @@ function login(){
     requestTime: nowTime,
     loginId: config.user.uid,
     nickName: config.user.displayName,
-    sign: md5Sign(config.user.uid, nowTime),
+    sign: md5Login(config.user.uid, nowTime),
     appId: 43,
     thirdType: 6
   }
@@ -215,6 +225,7 @@ function login(){
       localStorage.setItem("id", data.data.user.id);
       // localStorage.setItem("user", JSON.stringify(data.data.user));
       toast("Login Success.",null, "success");
+      connectSocket();
     }else throw data.msg;
   }).catch(error => {
     console.error(error);
@@ -240,6 +251,16 @@ function logout(){
     window.location.href = "index.html";
   }).catch(function(error) {
     console.log("Firebase : Logout Error => ", error);
+  });
+}
+function loginByEmail(email, password) {
+  firebase.auth().signInWithEmailAndPassword(email, password).catch(function(error) {
+    // Handle Errors here.
+    var errorCode = error.code;
+    var errorMessage = error.message;
+    console.log(error);
+    toast("LoginByEmail Falied : "+error.code, error.message, "falied", 5000);
+    // ...
   });
 }
 /* ------------------------------------ Config and Listener ------------------------------------ */
@@ -347,6 +368,7 @@ onSendMsgListener();
  * 1.用户发起视频通话 
  */
 function callStranger(){
+  views.conversationList.innerHTML = "";
   var url = `https://${config.domain}/api3/video/call`;
   var dataObj = {
     roomId: option.channel,
@@ -434,7 +456,7 @@ function youHangup(){
 function strangerHangupYou(obj){
   console.log("6.平台服务端转发挂断电话给对方", obj);
   toast("6.平台服务端转发挂断电话给对方"+obj.chatNo);
-  if(obj.chatNo = config.chatNo) {
+  if(obj.chatNo === config.chatNo) {
     leaveChannel(true);
     toast("ChatNo一致，挂断电话。");
   }
@@ -548,11 +570,14 @@ function startHeartBeat(){
  * 
  */
 function getStrangerUid(){
-  if(config.isTest){
-    return config.strangerUid;
-  }
+  return config.strangerUid;
 }
 function setStrangerUid(uid){
+  if(config.isTest) {
+    config.strangerUid = getQueryVariable("id") || "13579";
+    return;
+  }
+
   if(!uid) {
     config.strangerUid = null;
     views.serverState.innerText = "No match stranger.";
@@ -573,12 +598,13 @@ function setStrangerState(state, msg) {
   }
 }
 function getRandomStranger(){
+  views.conversationList.innerHTML = "";
   if(config.chatNo){
     toast("正在通话中，主动挂断电话");
     youHangup();
   }
   var url = `https://${config.domain}/api/together`;
-  axios.post(url, {}, { headers: getHeaders()}).then(res => {
+  axios.post(url, {  }, { headers: getHeaders()}).then(res => {
     console.log("Success + get random stranger + ", res.data);
     var result = res.data;
     if(result.msg === "success") {
@@ -680,9 +706,11 @@ function initAgora(noRelease){
       rtc.params.uid = uid;
       releaseLocalStream(noRelease);
     }, function(err) {
+      showView(views.waitStranger, "none");
       console.error("2 - client join failed", err)
     });
     }, (err) => {
+    showView(views.waitStranger, "none");
     console.error("1 - ", err);
   });
   addStreamListener();
@@ -723,10 +751,10 @@ function publishLocalStream(){
     config.inPublishLocalStream = false;
   });
   toast("Publish localstream : "+config.userRole, null,null, 10 * 1000);
-  if(config.userRole === "host") {
-    toast("AnswerCall => Publish localstream : "+getYouUid(), null,null, 10 * 1000);
-    answerCall();
-  }
+  // if(config.userRole === "host") {
+  //   toast("AnswerCall => Publish localstream : "+getYouUid(), null,null, 10 * 1000);
+  //   answerCall();
+  // }
 }
 function unPublishLocalStream(){
   toast("取消发布本地流",null, null, 5 * 1000);
@@ -741,7 +769,7 @@ function unPublishLocalStream(){
  */
 // var alreadyAddStreamListener = false;
 function addStreamListener(){
-  // if(alreadyAddStreamListener) return;
+  // remote
   rtc.client.on("stream-added", function (evt) {  
     var remoteStream = evt.stream;
     var id = remoteStream.getId();
@@ -778,7 +806,7 @@ function addStreamListener(){
     }
     console.log('stream-removed remote-uid: ', id);
   });
-  // 
+  // local
   rtc.client.on("stream-unpublished", function(evt) {
     toast("local stream unpublished", evt, null, 3 * 1000);
     console.log("local stream unpublished : ", evt);
@@ -787,6 +815,10 @@ function addStreamListener(){
     toast("local stream published");
     console.log("local stream published : ", evt);
     config.inPublishLocalStream = true;
+    if(config.userRole === "host") {
+      toast("AnswerCall => Publish localstream : "+getYouUid(), null,null, 10 * 1000);
+      answerCall();
+    }
   });
 }
 /**
@@ -796,7 +828,16 @@ function leaveChannel(unPublish){
   setStrangerUid(null);
   config.chatNo = null;
   if(!rtc.client) return;
-  if(unPublish) unPublishLocalStream();
+  showView(views.waitStranger, "none");
+  if(unPublish) {
+    unPublishLocalStream();
+    var strangerVideo = document.querySelector("#stranger-container > div:last-child");
+    if(strangerVideo.id.match("player")) {
+      remoteStream.stop(strangerVideo.id);
+      toast("Remove StrangerStream : ", strangerVideo.id, "warn", 10 * 1000);
+      strangerVideo.remove();
+    }
+  }
   rtc.client.leave(function () {
     // Stop playing the local stream
     if(!rtc.localStream) return;
@@ -816,7 +857,11 @@ function leaveChannel(unPublish){
 /* ------------------------------------ Gift ------------------------------------ */
 (() => {
   views.gift.onclick = function(){
-    showModal("gift_modal");
+    if(getStrangerUid()){
+      showModal("gift_modal");
+    }else {
+      toast("No match stranger, Click <Start> button to match.",null,null,3000);
+    }
   }
   var gifts = document.querySelectorAll(".gift-item");
   for(var i=0; i<gifts.length; i++){
@@ -826,7 +871,18 @@ function leaveChannel(unPublish){
     });
   }
 })();
+function hideBodyScrollbar() {
+  document.body.classList.add("hide-scroll-bar");
+  var modalNum = +(document.body.getAttribute("modal-num") || "0");
+  document.body.setAttribute("modal-num", ++modalNum);
+}
+function showBodyScrollbar() {
+  var modalNum = +(document.body.getAttribute("modal-num") || "0");
+  document.body.setAttribute("modal-num", --modalNum);
+  if(modalNum < 0) document.body.classList.remove("hide-scroll-bar");
+}
 function showModal(id){
+  hideBodyScrollbar();
   var modal = document.querySelector(`#${id}`);
   if(!modal) throw `No Modal -> #${id}`;
   showView(modal, "flex");
@@ -836,6 +892,7 @@ function showModal(id){
   }
 }
 function hideModal(e){
+  showBodyScrollbar();
   var parent = e.classList.contains("modal") ? e : parentByClass(e, "modal");
   parent.classList.add("pop-slide-out");
   parent.onanimationend = function(){
@@ -1067,6 +1124,7 @@ var loading = function(isLoading) {
 };
 /* ------------------------------------ popup ------------------------------------ */
 function showPopup(eleId) {
+  hideBodyScrollbar();
   var popup = document.getElementById("popup");
   var popPage = document.getElementById(eleId);
   showView(popPage);
@@ -1078,6 +1136,7 @@ function showPopup(eleId) {
   }
 }
 function hidePopup(eleId) {
+  showBodyScrollbar();
   var popup = document.getElementById("popup");
   var popPage = document.getElementById(eleId);
   if(!eleId) throw "NO such popup";

@@ -347,7 +347,7 @@ function onSendMsgListener(){
 
   youInput.addEventListener("keyup", function(e){
     console.log("KeyCode => ", e.code);
-    if(e.code === "Enter") {
+    if(e.code.match("Enter")) {
       var str = youInput.value;
       if(isEmpty(str)) return;
       sendMsg(str.trim());

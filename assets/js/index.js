@@ -1,4 +1,10 @@
 /* ------------------------------------ Toolkit ------------------------------------ */
+function StorageHelper(){}
+StorageHelper.prototype.removeItems = function(){
+  console.log(arguments);
+  for(var i in arguments) localStorage.removeItem(arguments[i]);
+}
+const storageHelper = new StorageHelper();
 function showView(ele, displayName){
   if(!ele) throw "Element not exists";
   if(displayName) ele.style.display = displayName;
@@ -50,12 +56,14 @@ function fullScreen(ele) {
  * generate request headers and return
  */
 function getHeaders(){
+  var nowTime = Date.now();
   return {
     "mid": "testABC",
-    "timestamp": Date.now(),
+    "timestamp": nowTime,
     "uid": +getYouUid(),
-    "sign": 1111,
-    "Content-Type": "application/json"
+    "sign": config.firebaseLogin ? md5Sign(config.user.uid, nowTime) : 1111,
+    "Content-Type": "application/json",
+    "authorization": "JHGK2020HGHDKjhq"
   }
 }
 /**
@@ -116,8 +124,6 @@ var uiConfig = {
        * @param {object} authResult - 登录成功信息，包含用户信息
        */
       console.log("Login Success!");
-      localStorage.setItem("uid", authResult.user.uid);
-      localStorage.setItem("user", JSON.stringify(authResult.user));
       (async () => {
         var tokenLoader = document.getElementById("tokenLoader");
         showView(tokenLoader, "block");
@@ -205,7 +211,9 @@ function login(){
     var data = res.data;
     if(data.msg === "success"){
       localStorage.setItem("token", data.data.token);
-      localStorage.setItem("user", JSON.stringify(data.data.user));
+      localStorage.setItem("uid", data.data.user.uid);
+      localStorage.setItem("id", data.data.user.id);
+      // localStorage.setItem("user", JSON.stringify(data.data.user));
       toast("Login Success.",null, "success");
     }else throw data.msg;
   }).catch(error => {
@@ -214,11 +222,11 @@ function login(){
 }
 function showLogin(){
   localStorage.setItem("lastSLT", Date.now());
-  document.getElementById("login_modal").style.display = "flex";
+  showModal("login_modal");
 }
 function hideLogin(){
   localStorage.setItem("lastSLT", 0);
-  document.getElementById("login_modal").style.display = "none";
+  hideModal(document.getElementById("login_modal"));
 }
 /**
  * 登出
@@ -226,13 +234,12 @@ function hideLogin(){
 function logout(){
   console.log("Firebase : Logout!");
   firebase.auth().signOut().then(function() {
-    if(!window.socket) window.socket.close();
-    localStorage.removeItem("uid");
-    localStorage.removeItem("token");
+    if(window.socket) window.socket.close();
+    storageHelper.removeItems("uid", "token", "id");
     console.log("Firebase : Logout Success!");
     window.location.href = "index.html";
   }).catch(function(error) {
-    console.log("Firebase : Logout Error");
+    console.log("Firebase : Logout Error => ", error);
   });
 }
 /* ------------------------------------ Config and Listener ------------------------------------ */
@@ -250,6 +257,7 @@ const views = {
 }
 var config = {
   isTest: true,
+  firebaseLogin: true,
   userRole: "audience",
   videoScale: 0.7, //视频宽高比例
   heartbeat: 0, 
@@ -551,12 +559,10 @@ function setStrangerUid(uid){
   }else config.strangerUid = uid;
 }
 function getYouUid(){
-  try{
-    if(config.user.uid === "YFa0FqVUpybz72Qm9MmZCw4troq2") return "24680";
-    else return "13579";
-  }catch(error){
-    return null;
-  }
+  if(config.firebaseLogin) return localStorage.getItem("uid");
+
+  if(config.user.uid === "YFa0FqVUpybz72Qm9MmZCw4troq2") return "24680";
+  else return "13579";
 }
 function setStrangerState(state, msg) {
   switch(state){
@@ -810,8 +816,7 @@ function leaveChannel(unPublish){
 /* ------------------------------------ Gift ------------------------------------ */
 (() => {
   views.gift.onclick = function(){
-    var giftModal = document.getElementById("gift_modal");
-    giftModal.style.display = "flex";
+    showModal("gift_modal");
   }
   var gifts = document.querySelectorAll(".gift-item");
   for(var i=0; i<gifts.length; i++){
@@ -824,11 +829,19 @@ function leaveChannel(unPublish){
 function showModal(id){
   var modal = document.querySelector(`#${id}`);
   if(!modal) throw `No Modal -> #${id}`;
-  modal.style.display = "flex";
+  showView(modal, "flex");
+  modal.classList.add("pop-slide-in");
+  modal.onanimationend = function(){
+    modal.classList.remove("pop-slide-in");
+  }
 }
 function hideModal(e){
-  var parent = parentByClass(e, "modal");
-  parent.style.display = "none";
+  var parent = e.classList.contains("modal") ? e : parentByClass(e, "modal");
+  parent.classList.add("pop-slide-out");
+  parent.onanimationend = function(){
+    parent.classList.remove("pop-slide-out");
+    showView(parent, "none");
+  }
 }
 function sendGift(giftName){
   if(isEmpty(giftName)) {
@@ -968,6 +981,7 @@ function rechargeByStripe(productIosId){
       }
     };
     var card = elements.create("card", { style: style });
+    console.log("Card => ", card);
     // Stripe injects an iframe into the DOM
     card.mount("#card-element");
     card.on("change", function (event) {
@@ -977,6 +991,7 @@ function rechargeByStripe(productIosId){
     });
     var form = document.getElementById("payment-form");
     form.addEventListener("submit", function(event) {
+      console.log("Submit pay");
       event.preventDefault();
       // Complete payment when the submit button is clicked
       payWithCard(stripe, card, data.data);
@@ -991,24 +1006,29 @@ function rechargeByStripe(productIosId){
 // If the card requires authentication Stripe shows a pop-up modal to
 // prompt the user to enter authentication details without leaving your page.
 var payWithCard = function(stripe_, card, clientSecret) {
+  console.log("%cPay width card","color:red;");
   loading(true);
   stripe_
-    .confirmCardPayment(clientSecret, {
-      payment_method: {
-        card: card
+  .confirmCardPayment(clientSecret, {
+    payment_method: {
+      type: 'card',
+      card: card,
+      billing_details: {
+        name: 'Jenny Rosen',
       }
-    })
-    .then(function(result) {
-      if (result.error) {
-        // Show error to your customer
-        showError(result.error.message);
-        rechargeFailed( {payment: "stripe", error: result.error} );
-      } else {
-        // The payment succeeded!
-        orderComplete(result.paymentIntent.id);
-        rechargeSuccess({ payment: "stripe"} );
-      }
-    });
+    }
+  })
+  .then(function(result) {
+    if (result.error) {
+      // Show error to your customer
+      showError(result.error.message);
+      rechargeFailed( {payment: "stripe", error: result.error} );
+    } else {
+      // The payment succeeded!
+      orderComplete(result.paymentIntent.id);
+      rechargeSuccess({ payment: "stripe"} );
+    }
+  });
 };
 /* ------- UI helpers ------- */
 // Shows a success message when the payment is complete

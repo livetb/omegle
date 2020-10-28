@@ -287,7 +287,7 @@ var config = {
   isTest: true,
   allIntervalTime: 10, // 限制用户多少秒之内只能执行某操作一次
   firebaseLogin: true, //启用firebase验证
-  shareScreen: true, //分享屏幕
+  shareScreen: !Boolean(getQueryVariable("screen")), //分享屏幕
   inMatch: false, //正在匹配
   userRole: "audience",
   videoScale: 0.7, //视频宽高比例
@@ -301,6 +301,7 @@ var config = {
     rocket: 1000
   }
 }
+toast(`ShareScreen: ${config.shareScreen}`, null, "success", 5000);
 /**
  * 防抖，高频函数每{seconds}秒之内只能执行一次，若当前函数执行时间未结束，则重新开始计算时间
  * @param {*} fn 

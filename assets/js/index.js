@@ -93,6 +93,15 @@ function thorwAnError(msg){
   msg = msg ? msg : "Default Error";
   throw msg;
 }
+window.onbeforeunload = function (e) {
+  e = e || window.event;
+  // 兼容IE8和Firefox 4之前的版本
+  if (e) {
+    e.returnValue = '确定退出吗？';
+  }
+  // Chrome, Safari, Firefox 4+, Opera 12+ , IE 9+
+  return '确定退出吗？';
+};
 /* ------------------------------------ MD5 ------------------------------------ */
 function md5Login(firebaseUid, requestTime){
   var key = "fjsihaueoewh3453453rgrsdkJ(fjeKHA3eJhnj,fjo43";
@@ -420,6 +429,12 @@ function callStranger(){
  * @param {*} obj 
  */
 function videoCallYou(obj){
+  if(config.inMatch){
+    config.userRole = "host";
+    publishLocalStream();
+    toast("匹配中，正好遇到对方匹配。",null,null,10 * 1000);
+    return;
+  }
   config.callYouTime = Date.now();
   console.log("Receive Video Call.",obj);
   config.chatNo = obj.chatNo;
@@ -477,10 +492,7 @@ function youHangup(){
   config.chatNo = null;
   leaveChannel(true);
 }
-/**
- * 6.平台服务端转发挂断电话给对方
- */
-function strangerHangupYou(obj){
+var _strangerHangupYou = throttle(function(obj){
   console.log("6.平台服务端转发挂断电话给对方", obj);
   toast("6.平台服务端转发挂断电话给对方"+obj.chatNo);
   if(obj.chatNo === config.chatNo) {
@@ -489,12 +501,21 @@ function strangerHangupYou(obj){
   }else if(!config.chatNo && config.inMatch){
     leaveChannel();
     toast("对方长时间未接听，重新开始匹配。");
+    getRandomStranger();
   }
+}, config.allIntervalTime, function(){
+  console.warn("Stranger Hangup You Already Running...");
+});
+/**
+ * 6.平台服务端转发挂断电话给对方
+ */
+function strangerHangupYou(obj){
+  _strangerHangupYou(obj);
 }
 /** 7.平台服务端会每隔10s检查商户的余额是否满足当前通话，若是不满足，会主动发 CC 命令给用户端和主播端 */
 function debugCall(){
   console.log(`YouUid: ${getYouUid()} - strangerUid: ${getStrangerUid()}`);
-  console.log(`You Chatno : ${config.chatNo}`);
+  console.log(`You Chatno : ${config.chatNo} - inMatch: ${config.inMatch}`);
   console.log("You Role: ", config.userRole);
   console.log("Option: ", option);
 }
@@ -739,6 +760,8 @@ function initAgora(noRelease){
       releaseLocalStream(noRelease);
     }, function(err) {
       showView(views.waitStranger, "none");
+      config.inMatch = false;
+      toast("System error, Please Refresh the page.",null,"error",5000);
       console.error("2 - client join failed", err)
     });
     }, (err) => {
@@ -770,6 +793,7 @@ function releaseLocalStream(noRelease){
     if(noRelease) return;
     publishLocalStream();
   }, function (err) {
+    setStrangerUid(null);
     console.error("3 - init local stream failed ", err);
     if(err.msg === "NotAllowedError"){
       toast(err.info, err.msg, "error", 5000);
@@ -1247,6 +1271,12 @@ function getNowTime(){
   // return `${now.getFullYear()}/${month>9?"":0}${month}/${date>9?"":0}${date} ${hours>9?"":0}${hours}:${minute>9?"":0}${minute}:${seconds>9?"":0}${seconds}:${now.getMilliseconds()}`;
   return `${hours>9?"":0}${hours}:${minute>9?"":0}${minute}:${seconds>9?"":0}${seconds}:${now.getMilliseconds()}`;
 }
+/**
+ * @param {String} title - must
+ * @param {String} msg
+ * @param {Emnu} type - null/"warn"/"error"/"success"
+ * @param {Number} duration - millisecond
+ */
 function toast(title, msg , type, duration) {
   console.log("%c"+getNowTime()+" "+title, "font-size: 20px; background: #4285f4; color: #FFF;");
   if(!title) throw new UserError("Toast must set Title");

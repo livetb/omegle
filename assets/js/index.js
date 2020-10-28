@@ -277,7 +277,10 @@ const views = {
 }
 var config = {
   isTest: true,
-  firebaseLogin: true,
+  allIntervalTime: 10, // 限制用户多少秒之内只能执行某操作一次
+  firebaseLogin: true, //启用firebase验证
+  shareScreen: true, //分享屏幕
+  inMatch: false, //正在匹配
   userRole: "audience",
   videoScale: 0.7, //视频宽高比例
   heartbeat: 0, 
@@ -290,7 +293,11 @@ var config = {
     rocket: 1000
   }
 }
-/** debounce & throttle */
+/**
+ * 防抖，高频函数每{seconds}秒之内只能执行一次，若当前函数执行时间未结束，则重新开始计算时间
+ * @param {*} fn 
+ * @param {*} seconds 
+ */
 function debounce(fn, seconds){
   var timeout = null;
   return function(){
@@ -300,6 +307,12 @@ function debounce(fn, seconds){
     }, seconds * 1000);
   }
 }
+/**
+ * 节流，高频函数每{seconds}秒之内只能执行一次，只有当前函数执行时间结束，才会接收下一次调用
+ * @param {Function} fn - 需要节流执行的函数
+ * @param {Number} seconds - 执行间隔时间
+ * @param {Function} tipsFun - 正在执行时的处理函数
+ */
 function throttle(fn, seconds, tipsFun){
   var canRun = true;
   return function(){
@@ -335,22 +348,23 @@ function changeChatAndContainer(){
   console.log("Change Chat Container => ", `${youAndStranger.clientHeight}px`);
   chatContainer.style.height = `${youAndStranger.clientHeight}px`;
 }
-changeYouAndStrangerSize();
-changeChatAndContainer();
-addResizeListener(changeYouAndStrangerSize);
-addResizeListener(changeChatAndContainer);
+// changeYouAndStrangerSize();
+// changeChatAndContainer();
+// addResizeListener(changeYouAndStrangerSize);
+// addResizeListener(changeChatAndContainer);
 
 function onSendMsgListener(){
-  var youInput = document.getElementById("you-input");
   var sendMsgBtn = document.getElementById("send-msg");
 
-  youInput.addEventListener("keyup", function(e){
+  views.youInput.addEventListener("keyup", function(e){
     console.log("KeyCode => ", e.code);
     if(e.code.match("Enter")) {
-      var str = youInput.value;
+      var str =  views.youInput.value;
       if(isEmpty(str)) return;
-      sendMsg(str.trim());
-      youInput.value = "";
+      else if(!getStrangerUid()){
+        sendMsg("");
+      }else sendMsg(str.trim());
+      views.youInput.value = "";
     }
   });
   sendMsgBtn.addEventListener("click", function(){
@@ -358,15 +372,18 @@ function onSendMsgListener(){
     var str = youInput.value;
     if(isEmpty(str)) return;
     sendMsg(str.trim());
-    youInput.value = "";
+    views.youInput.value = "";
   });
 }
 onSendMsgListener();
 /* ------------------------------------ Call ------------------------------------ */
-/**
- * 1.用户发起视频通话 
- */
-function callStranger(){
+function call20SCheck(){
+  setTimeout(() => {
+
+  }, 20 * 1000);
+}
+
+var _callStranger = throttle(function(){
   views.conversationList.innerHTML = "";
   var url = `https://${config.domain}/api3/video/call`;
   var dataObj = {
@@ -377,6 +394,8 @@ function callStranger(){
     remoteToken: option.token
   }
   axios.post(url, dataObj, { headers: getHeaders()}).then(res => {
+    console.log("CallStranger => ", res.data);
+    toast("1.用户发起视频通话");
     if(res.data.msg === "success"){
       var result = res.data;
       initAgoraOption(result.data);
@@ -384,8 +403,17 @@ function callStranger(){
       config.userRole = "audience";
     }else throw `Status : ${res.data.status}`;
   }).catch(error => {
+    setStrangerUid(null);
     console.error("Call Stranger Error.", error);
   });
+}, 10, function(){
+  console.warn("Call Stranger Already Running...");
+})
+/**
+ * 1.用户发起视频通话, 10s内仅能执行一次
+ */
+function callStranger(){
+  _callStranger();
 }
 /**
  * 2.平台服务器转发用户发起的视频通话给主播
@@ -458,6 +486,9 @@ function strangerHangupYou(obj){
   if(obj.chatNo === config.chatNo) {
     leaveChannel(true);
     toast("ChatNo一致，挂断电话。");
+  }else if(!config.chatNo && config.inMatch){
+    leaveChannel();
+    toast("对方长时间未接听，重新开始匹配。");
   }
 }
 /** 7.平台服务端会每隔10s检查商户的余额是否满足当前通话，若是不满足，会主动发 CC 命令给用户端和主播端 */
@@ -569,17 +600,21 @@ function startHeartBeat(){
  * 
  */
 function getStrangerUid(){
+  console.log("%cGet Stranger Uid: "+config.strangerUid, "color: red;");
+  if(!config.strangerUid) config.inMatch = false;
+  else config.inMatch = true;
   return config.strangerUid;
 }
 function setStrangerUid(uid){
-  if(config.isTest) {
-    config.strangerUid = getQueryVariable("id") || "13579";
-    return;
-  }
-
   if(!uid) {
     config.strangerUid = null;
+    config.chatNo = null;
     views.serverState.innerText = "No match stranger.";
+    showView(views.waitStranger, "none");
+    views.strangerContainer.style.backgroundImage = "";
+    config.inMatch = false;
+  }else if(config.isTest) {
+    config.strangerUid = getQueryVariable("id") || null;
   }else config.strangerUid = uid;
 }
 function getYouUid(){
@@ -596,7 +631,7 @@ function setStrangerState(state, msg) {
       console.log("noMatch"); break;
   }
 }
-function getRandomStranger(){
+var _getRandomStranger = throttle(function(){
   views.conversationList.innerHTML = "";
   if(config.chatNo){
     toast("正在通话中，主动挂断电话");
@@ -609,7 +644,7 @@ function getRandomStranger(){
     if(result.msg === "success") {
       setStrangerUid(result.data.userInfo.uid);
       initAgoraOption(result.data);
-      toast("1 - 用户发起视频通话");
+      // initAgora(true);
       callStranger();
       views.strangerContainer.style.backgroundImage = `url(${res.data.data.userInfo.avatar})`;
     }
@@ -618,6 +653,11 @@ function getRandomStranger(){
     console.error(error);
     toast("getRandomStrangerError: "+error);
   });
+}, config.allIntervalTime, function(){
+  console.warn("Get Random Stranger Already Running...");
+});
+function getRandomStranger(){
+  _getRandomStranger();
 }
 function addChatListener(){
   views.startOrNext.addEventListener("change", function(){
@@ -653,7 +693,7 @@ function addChatListener(){
       toast("未收到对方请求，准备主动发起请求。");
     }
     // toast(""+isNext,null,"tips");
-    if(!isNext || !config.noFirstMatch){
+    if(!isNext || !config.noFirstMatch || !getStrangerUid()){
       toast("Already Login. Start match random stranger.");
       getRandomStranger();
       config.noFirstMatch = true;
@@ -723,8 +763,8 @@ function releaseLocalStream(noRelease){
   rtc.localStream = AgoraRTC.createStream({
     streamID: rtc.params.uid,
     audio: true,
-    video: false,
-    screen: true,
+    video: !config.shareScreen,
+    screen: config.shareScreen,
   });
   //3 - Initialize the local stream
   rtc.localStream.setScreenProfile("480p_2");
@@ -810,7 +850,7 @@ function addStreamListener(){
     toast("local stream unpublished", evt, null, 3 * 1000);
     console.log("local stream unpublished : ", evt);
   });
-  rtc.client.on("stream-published", function(evt) {
+  var _answerCall = throttle(function(evt){
     toast("local stream published");
     console.log("local stream published : ", evt);
     config.inPublishLocalStream = true;
@@ -818,6 +858,11 @@ function addStreamListener(){
       toast("AnswerCall => Publish localstream : "+getYouUid(), null,null, 10 * 1000);
       answerCall();
     }
+  },10 * 1000, function(){
+    console.log("AnswerCall is Running...");
+  });
+  rtc.client.on("stream-published", function(evt) {
+    _answerCall(evt);
   });
 }
 /**
@@ -825,14 +870,11 @@ function addStreamListener(){
  */
 function leaveChannel(unPublish){
   setStrangerUid(null);
-  config.chatNo = null;
   if(!rtc.client) return;
-  showView(views.waitStranger, "none");
   if(unPublish) {
     unPublishLocalStream();
     var strangerVideo = document.querySelector("#stranger-container > div:last-child");
-    if(strangerVideo.id.match("player")) {
-      remoteStream.stop(strangerVideo.id);
+    if(strangerVideo && strangerVideo.id.match("player")) {
       toast("Remove StrangerStream : ", strangerVideo.id, "warn", 10 * 1000);
       strangerVideo.remove();
     }
@@ -1204,8 +1246,16 @@ function getToastList(){
   }
   return getToastList();
 }
+function getNowTime(){
+  var now = new Date();
+  var hours = now.getHours();
+  var minute = now.getMinutes();
+  var seconds = now.getSeconds();
+  // return `${now.getFullYear()}/${month>9?"":0}${month}/${date>9?"":0}${date} ${hours>9?"":0}${hours}:${minute>9?"":0}${minute}:${seconds>9?"":0}${seconds}:${now.getMilliseconds()}`;
+  return `${hours>9?"":0}${hours}:${minute>9?"":0}${minute}:${seconds>9?"":0}${seconds}:${now.getMilliseconds()}`;
+}
 function toast(title, msg , type, duration) {
-  console.log("%c"+title, "font-size: 20px; background: #4285f4; color: #FFF;");
+  console.log("%c"+getNowTime()+" "+title, "font-size: 20px; background: #4285f4; color: #FFF;");
   if(!title) throw new UserError("Toast must set Title");
   if(!duration) duration = 2000;
   var item = document.createElement("div");

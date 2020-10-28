@@ -94,6 +94,8 @@ function thorwAnError(msg){
   throw msg;
 }
 window.addEventListener('beforeunload', (event) => {
+  youHangup();
+  localStorage.setItem("leaveTime", getNowTime());
   // Cancel the event as stated by the standard.
   event.preventDefault();
   // Older browsers supported custom message
@@ -389,7 +391,10 @@ function call20SCheck(){
   }, 20 * 1000);
 }
 
-var _callStranger = throttle(function(){
+/**
+ * 1.用户发起视频通话, 10s内仅能执行一次
+ */
+var callStranger = throttle(function(){
   views.conversationList.innerHTML = "";
   var url = `https://${config.domain}/api3/video/call`;
   var dataObj = {
@@ -416,12 +421,6 @@ var _callStranger = throttle(function(){
   console.warn("Call Stranger Already Running...");
 })
 /**
- * 1.用户发起视频通话, 10s内仅能执行一次
- */
-function callStranger(){
-  _callStranger();
-}
-/**
  * 2.平台服务器转发用户发起的视频通话给主播
  * @param {*} obj 
  */
@@ -445,7 +444,7 @@ function videoCallYou(obj){
 /**
  * 3.主播接起视频通话
  */
-function answerCall(){
+var answerCall = throttle(function(){
   var url = `https://${config.domain}/api3/video/answer`;
   var dataObj = {
     roomId: option.channel,
@@ -459,7 +458,9 @@ function answerCall(){
     console.error("3.主播接起视频通话 - 错误", error);
     toast("3.主播接起视频通话 - 错误",null, "error");
   });
-}
+}, 5, function(seconds){
+  console.log(`%c主播每${seconds}秒只能接起一次电话`,"color: #00F;");
+});
 /**
  * 4.平台服务器转发主播接起视频通话给用户
  */
@@ -474,41 +475,37 @@ function strangerAnswerCall(obj){
  * 5.接起视频通话后挂断电话
  */
 function youHangup(){
+  if(!getStrangerUid) return;
   var url = `https://${config.domain}/api3/video/close`;
   var dataObj = {
     roomId: option.channel,
     remoteUid: +getStrangerUid()
   }
   axios.post(url, dataObj, { headers: getHeaders() }).then(res => {
-    console.log("5.接起视频通话后挂断电话", res.data);
-    toast("5.接起视频通话后挂断电话");
+    toast("5.接起视频通话后挂断电话", res.data);
   }).catch(error => {
-    console.log("5.接起视频通话后挂断电话 - 错误", error);
-    toast("5.接起视频通话后挂断电话 - 错误");
+    toast("5.接起视频通话后挂断电话 - 错误", error);
   });
   config.chatNo = null;
   leaveChannel(true);
 }
-var _strangerHangupYou = throttle(function(obj){
+/**
+ * 6.平台服务端转发挂断电话给对方
+ */
+var strangerHangupYou = throttle(function(obj){
   console.log("6.平台服务端转发挂断电话给对方", obj);
   toast("6.平台服务端转发挂断电话给对方"+obj.chatNo);
   if(obj.chatNo === config.chatNo) {
-    leaveChannel(true);
+    youHangup();
     toast("ChatNo一致，挂断电话。");
   }else if(!config.chatNo && config.inMatch){
-    leaveChannel();
+    youHangup();
     toast("对方长时间未接听，重新开始匹配。");
     getRandomStranger();
   }
 }, config.allIntervalTime, function(){
   console.warn("Stranger Hangup You Already Running...");
 });
-/**
- * 6.平台服务端转发挂断电话给对方
- */
-function strangerHangupYou(obj){
-  _strangerHangupYou(obj);
-}
 /** 7.平台服务端会每隔10s检查商户的余额是否满足当前通话，若是不满足，会主动发 CC 命令给用户端和主播端 */
 function debugCall(){
   console.log(`YouUid: ${getYouUid()} - strangerUid: ${getStrangerUid()}`);
@@ -649,7 +646,10 @@ function setStrangerState(state, msg) {
       console.log("noMatch"); break;
   }
 }
-var _getRandomStranger = throttle(function(){
+/**
+ * 获取新的随机陌生人，并结束当前通话（如果正在通话）
+ */
+var getRandomStranger = throttle(function(){
   views.conversationList.innerHTML = "";
   if(config.chatNo){
     toast("正在通话中，主动挂断电话");
@@ -668,15 +668,14 @@ var _getRandomStranger = throttle(function(){
     }
     else throw "Failed : GetRandomStranger";
   }).catch(error => {
+    setStrangerUid(null);
     console.error(error);
     toast("getRandomStrangerError: "+error);
   });
-}, config.allIntervalTime, function(){
-  console.warn("Get Random Stranger Already Running...");
+}, config.allIntervalTime, function(seconds){
+  console.warn(`Get Random Stranger Already Running...,In ${seconds}s Only Excute Once.`);
 });
-function getRandomStranger(){
-  _getRandomStranger();
-}
+
 function addChatListener(){
   views.startOrNext.addEventListener("change", function(){
     var isNext = this.checked;
@@ -797,18 +796,16 @@ function releaseLocalStream(noRelease){
     }else toast("Video Chat Error");
   });
 }
-function publishLocalStream(){
+var publishLocalStream = throttle(function(){
   rtc.client.publish(rtc.localStream, function (err) {
     console.log("3.2 - publish failed");
     console.error(err);
     config.inPublishLocalStream = false;
   });
   toast("Publish localstream : "+config.userRole, null,null, 10 * 1000);
-  // if(config.userRole === "host") {
-  //   toast("AnswerCall => Publish localstream : "+getYouUid(), null,null, 10 * 1000);
-  //   answerCall();
-  // }
-}
+}, config.allIntervalTime, function(seconds){
+  console.warn(`${seconds}秒内只能发布一次本地流。`);
+});
 function unPublishLocalStream(){
   toast("取消发布本地流",null, null, 5 * 1000);
   rtc.client.unpublish(rtc.localStream, function(err){
@@ -841,6 +838,7 @@ function addStreamListener(){
     // addView(id);
     // Play the remote stream.
     // remoteStream.play("remote_video_" + id,  {fit: "contain"});
+    publishLocalStream();
     console.info("------ Stream subscribed. ------ ");
     remoteStream.play("stranger-container", {fit: "contain"});
     console.log('stream-subscribed remote-uid: ', id);
@@ -864,7 +862,7 @@ function addStreamListener(){
     toast("local stream unpublished", evt, null, 3 * 1000);
     console.log("local stream unpublished : ", evt);
   });
-  var _answerCall = throttle(function(evt){
+  var publishedListener = throttle(function(evt){
     toast("local stream published");
     console.log("local stream published : ", evt);
     config.inPublishLocalStream = true;
@@ -872,12 +870,10 @@ function addStreamListener(){
       toast("AnswerCall => Publish localstream : "+getYouUid(), null,null, 10 * 1000);
       answerCall();
     }
-  },10 * 1000, function(){
-    console.log("AnswerCall is Running...");
+  }, config.allIntervalTime, function(){
+    console.log("Stream-Published is Running...");
   });
-  rtc.client.on("stream-published", function(evt) {
-    _answerCall(evt);
-  });
+  rtc.client.on("stream-published", publishedListener);
 }
 /**
  * 
@@ -1276,6 +1272,7 @@ function getNowTime(){
  */
 function toast(title, msg , type, duration) {
   console.log("%c"+getNowTime()+" "+title, "font-size: 20px; background: #4285f4; color: #FFF;");
+  if(msg) console.log(msg);
   if(!title) throw new UserError("Toast must set Title");
   if(!duration) duration = 2000;
   var item = document.createElement("div");

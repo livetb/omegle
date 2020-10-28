@@ -661,7 +661,6 @@ function getRandomStranger(){
 }
 function addChatListener(){
   views.startOrNext.addEventListener("change", function(){
-    // return;
     var isNext = this.checked;
     if(!config.user){
       this.checked = false;
@@ -669,12 +668,6 @@ function addChatListener(){
       return;
     }
     var nowTime = Date.now(), callYouTime = config.callYouTime || 0, lastMatchTime = config.lastMatchTime || 0;
-    // if(!isNext && (nowTime - lastMatchTime) < 10 * 1000 ){
-    //   toast("请勿重复点击，10s内只能匹配一次。");
-    //   views.startOrNext.checked = false;
-    //   return;
-    // }
-    // config.lastMatchTime = Date.now();
     toast(`NowTime: ${nowTime} - CallYouTime: ${callYouTime} - 时间差：${nowTime - callYouTime}`);
     if((nowTime - callYouTime) < 20 * 1000){
       // config.noFirstCall = true;

@@ -93,15 +93,12 @@ function thorwAnError(msg){
   msg = msg ? msg : "Default Error";
   throw msg;
 }
-window.onbeforeunload = function (e) {
-  e = e || window.event;
-  // 兼容IE8和Firefox 4之前的版本
-  if (e) {
-    e.returnValue = '确定退出吗？';
-  }
-  // Chrome, Safari, Firefox 4+, Opera 12+ , IE 9+
-  return '确定退出吗？';
-};
+window.addEventListener('beforeunload', (event) => {
+  // Cancel the event as stated by the standard.
+  event.preventDefault();
+  // Older browsers supported custom message
+  event.returnValue = '确定离开吗？';
+});
 /* ------------------------------------ MD5 ------------------------------------ */
 function md5Login(firebaseUid, requestTime){
   var key = "fjsihaueoewh3453453rgrsdkJ(fjeKHA3eJhnj,fjo43";

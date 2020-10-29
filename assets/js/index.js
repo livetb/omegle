@@ -1,14 +1,32 @@
 /* ------------------------------------ Toolkit ------------------------------------ */
-function StorageHelper(){}
+function StorageHelper(app){
+  this.app = app;
+}
 StorageHelper.prototype.removeItems = function(){
   console.log(arguments);
-  for(var i in arguments) localStorage.removeItem(arguments[i]);
+  for(var i in arguments){
+    var key = this.app + "_" + arguments[i];
+    localStorage.removeItem(key);
+  }
 }
-const storageHelper = new StorageHelper();
+StorageHelper.prototype.setItem = function(key, value){
+  key = this.app + "_" + key;
+  localStorage.setItem(key, value);
+}
+StorageHelper.prototype.getItem = function(key){
+  key = key = this.app + "_" + key;
+  return localStorage.getItem(key);
+}
+const storageHelper = new StorageHelper("Omegle");
 function showView(ele, displayName){
   if(!ele) throw "Element not exists";
   if(displayName) ele.style.display = displayName;
   else ele.style.display = ele.getAttribute("visible-display") || "inline-block";
+}
+function enableView(ele, enable){
+  if(!ele) throw "Element not exists";
+  if(enable) ele.removeAttribute("disabled");
+  else ele.setAttribute("disabled", "disabled");
 }
 function isEmpty(str){
   if(typeof str !== "string") return true;
@@ -16,7 +34,7 @@ function isEmpty(str){
   return false; 
 }
 /**
- * 寻找父元素
+ * Search Parent Element
  */
 function parentByClass(ele, className){
   var parent = ele.parentNode;
@@ -25,7 +43,7 @@ function parentByClass(ele, className){
   return parentByClass(parent, className);
 }
 /**
- * 解析地址栏Url，获取参数
+ * Analyze Url, Get Parma
  * @param {String} variable - QueryString
  */
 function getQueryVariable(variable) {
@@ -41,7 +59,7 @@ function getQueryVariable(variable) {
   return false;
 }
 /**
- * 全屏指定元素
+ * Choose A Element Fullscreen
  * @param {Element} ele 
  */
 function fullScreen(ele) {
@@ -58,18 +76,18 @@ function fullScreen(ele) {
 function getHeaders(){
   var nowTime = Date.now();
   return {
-    "mid": "testABC",
+    "mid": "1122010",
     "timestamp": nowTime,
     "uid": +getYouUid(),
-    "sign": config.firebaseLogin ? md5Sign(localStorage.getItem("uid"), nowTime) : 1111,
+    "sign": config.firebaseLogin ? md5Sign(storageHelper.getItem("uid"), nowTime) : 1111,
     "Content-Type": "application/json",
-    "authorization": localStorage.getItem("token")
+    "authorization": storageHelper.getItem("token")
   }
 }
 /**
  * 
  * @param {String} msg - Error Message
- * @param {Interger} status - Default 0: toast-error, 1: toast-warning
+ * @param {Interger} status - Default 0: println-error, 1: println-warning
  */
 function UserError(msg, status){
   this.msg = msg;
@@ -78,38 +96,43 @@ function UserError(msg, status){
 UserError.prototype.toString = function(){
   return "UserError : " + this.msg;
 }
-window.onerror = function(message, source, lineno, colno, error){
-  console.log("Listener Error. ",error);
-  if(error instanceof UserError){
-    var title = null, type = null;
-    switch(error.status){
-      case 0: title = "Error"; type = "error"; break;
-      case 1: title = "Warning"; type = "warning" ; break;
-    }
-    if(title && type) toast(title, error.msg, type, 3000);
+console.error = (func => {
+  return (...args) => {
+    // 在这里就可以收集到console.error的错误
+    // 做一些事
+    console.log("Listener Error. ",args);
+    func.apply(console, args);
   }
-}
-function thorwAnError(msg){
-  msg = msg ? msg : "Default Error";
-  throw msg;
-}
+})(console.error);
+
+// window.addEventListener("error", function(message, source, lineno, colno, error){
+//   console.log("Listener Error. ",error);
+//   if(error instanceof UserError){
+//     var title = null, type = null;
+//     switch(error.status){
+//       case 0: title = "Error"; type = "error"; break;
+//       case 1: title = "Warning"; type = "warning" ; break;
+//     }
+//     if(title && type) println(title, error.msg, type, 3000);
+//   }
+// });
 window.addEventListener('beforeunload', (event) => {
   youHangup();
-  localStorage.setItem("leaveTime", getNowTime());
+  storageHelper.setItem("leaveTime", getNowTime());
   // Cancel the event as stated by the standard.
   event.preventDefault();
   // Older browsers supported custom message
-  event.returnValue = '确定离开吗？';
+  // event.returnValue = 'Confirm Leave?';
 });
 /* ------------------------------------ MD5 ------------------------------------ */
 function md5Login(firebaseUid, requestTime){
-  var key = "fjsihaueoewh3453453rgrsdkJ(fjeKHA3eJhnj,fjo43";
+  var key = "5750fde891460434ede95993fbd8ec33";
   var str = firebaseUid+requestTime+key;
   return hex_md5(str).toUpperCase();
 }
 function md5Sign(timestamp, uid) {
-  var mid = "testABC";
-  var key = "fjsihaueoewh3453453rgrsdkJ(fjeKHA3eJhnj,fjo43";
+  var mid = "1122010";
+  var key = "5750fde891460434ede95993fbd8ec33";
   var str = mid + timestamp + uid + key;
   return hex_md5(str).toUpperCase();
 }
@@ -132,11 +155,11 @@ console.log("Initialize Firebase.");
 var ui = new firebaseui.auth.AuthUI(firebase.auth());
 var uiConfig = {
   callbacks: {
-    // 手动登录成功
+    // Manul Login
     signInSuccessWithAuthResult: function (authResult, redirectUrl) {
       config.user = authResult.user;
       /**
-       * @param {object} authResult - 登录成功信息，包含用户信息
+       * @param {object} authResult - Login Info, Contain UserInfo.
        */
       console.log("Login Success!");
       (async () => {
@@ -146,9 +169,9 @@ var uiConfig = {
         setTimeout(() => {
           hideLogin();
         }, 2000);
-        login();
+        login("Login Success!","Login Failed!");
       })();
-      return false; //false：取消自动跳转。
+      return false; //false：Cancel Auto Redirect.
     },
     uiShown: function () {
       // The widget is rendered.
@@ -184,34 +207,32 @@ function initView(user){
   var mode = getQueryVariable("mode");
   if(mode === "select" && !user) showLogin();
   if(user){
-    views.youContainer.style.backgroundImage = `url(${localStorage.getItem("avatar") || user.photoURL})`;
+    views.youContainer.style.backgroundImage = `url(${storageHelper.getItem("avatar") || user.photoURL})`;
   }
 }
 /**
- * 检测是否登录
+ * Check Login Or No.
  */
 firebase.auth().onAuthStateChanged(function (user) {
   initView(user);
-  var uid = localStorage.getItem("uid");
+  var uid = storageHelper.getItem("uid");
   if (user && uid) {
     config.user = user;
-    hideLogin();
-    connectSocket(); //与服务器建立连接
-    addSaveBaseinfoListener();
+    connectSocket(); // Connect Our Socket Server.
   } else {
     // showLogin()
   }
 });
 /**
- * 启动FirebaseUI，初始化登录控件
+ * Start FirebaseUi, Initialize Firebase Views.
  */
 function uiStart(){
   ui.start("#firebaseui-auth-container", uiConfig);
 }
 /**
- * 用户点击登录按钮时
+ * When Firebase Login Success, Call The Function.
  */
-function login(){
+function login(successTips, failedTips){
   var url = `https://${config.domain}/vFun2/user/login`;
   var nowTime = Date.now();
   var dataObj = {
@@ -227,28 +248,29 @@ function login(){
     console.log("Login => ", res.data);
     var data = res.data;
     if(data.msg === "success"){
-      localStorage.setItem("token", data.data.token);
-      localStorage.setItem("uid", data.data.user.uid);
-      localStorage.setItem("id", data.data.user.id);
-      localStorage.setItem("avatar", data.data.user.avatar);
-      toast("Login Success.",null, "success");
+      storageHelper.setItem("token", data.data.token);
+      storageHelper.setItem("uid", data.data.user.uid);
+      storageHelper.setItem("id", data.data.user.id);
+      storageHelper.setItem("avatar", data.data.user.avatar);
+      if(!data.data.user.avatar) {
+        showBaseinfoPopup();
+      }
+      if(successTips) toast(successTips,null, "success");
       connectSocket();
     }else throw data.msg;
   }).catch(error => {
+    if(failedTips) toast(failedTips,null, "error");
     console.error(error);
   });
 }
 function showLogin(){
-  localStorage.setItem("lastSLT", Date.now());
+  storageHelper.setItem("lastSLT", Date.now());
   showModal("login_modal");
 }
 function hideLogin(){
-  localStorage.setItem("lastSLT", 0);
+  storageHelper.setItem("lastSLT", 0);
   hideModal(document.getElementById("login_modal"));
 }
-/**
- * 登出
- */
 function logout(){
   console.log("Firebase : Logout!");
   firebase.auth().signOut().then(function() {
@@ -285,15 +307,16 @@ const views = {
 }
 var config = {
   isTest: true,
-  allIntervalTime: 10, // 限制用户多少秒之内只能执行某操作一次
-  firebaseLogin: true, //启用firebase验证
-  shareScreen: !Boolean(getQueryVariable("screen")), //分享屏幕
-  inMatch: false, //正在匹配
+  allIntervalTime: 10, // Limit User Operation in x Seconds, Only Excute Once.
+  firebaseLogin: true, // Start Firebase Verify.
+  shareScreen: !Boolean(getQueryVariable("screen")),
+  inMatch: false,
   userRole: "audience",
-  videoScale: 0.7, //视频宽高比例
+  videoScale: 0.7,
   heartbeat: 0, 
   domain: "t.livego.live",
   strangerUid: null,
+  coverMaxSize: 2 * 1024 * 1024, //2m
   giftList: {
     lollipop: 10,
     rose: 50,
@@ -301,9 +324,9 @@ var config = {
     rocket: 1000
   }
 }
-toast(`ShareScreen: ${config.shareScreen}`, null, "success", 5000);
+println(`ShareScreen: ${config.shareScreen}`, null, "success", 5000);
 /**
- * 防抖，高频函数每{seconds}秒之内只能执行一次，若当前函数执行时间未结束，则重新开始计算时间
+ * Function Only Excute Once in x Seconds, If Current Function Is Not Over, Restart The Calculation Time.
  * @param {*} fn 
  * @param {*} seconds 
  */
@@ -317,10 +340,10 @@ function debounce(fn, seconds){
   }
 }
 /**
- * 节流，高频函数每{seconds}秒之内只能执行一次，只有当前函数执行时间结束，才会接收下一次调用
- * @param {Function} fn - 需要节流执行的函数
- * @param {Number} seconds - 执行间隔时间
- * @param {Function} tipsFun - 正在执行时的处理函数
+ * Function Only Excute Once in x Seconds, Only Current Function Over, Can Receive Next Call.
+ * @param {Function} fn
+ * @param {Number} seconds
+ * @param {Function} tipsFun
  */
 function throttle(fn, seconds, tipsFun){
   var canRun = true;
@@ -378,7 +401,7 @@ function onSendMsgListener(){
   });
   sendMsgBtn.addEventListener("click", function(){
     console.log("Click SendMsg button.");
-    var str = youInput.value;
+    var str = views.youInput.value;
     if(isEmpty(str)) return;
     sendMsg(str.trim());
     views.youInput.value = "";
@@ -393,7 +416,7 @@ function call20SCheck(){
 }
 
 /**
- * 1.用户发起视频通话, 10s内仅能执行一次
+ * 1.User Start Video Call, Only Excute Once In {config.allIntervalTime} seconds.
  */
 var callStranger = throttle(function(){
   views.conversationList.innerHTML = "";
@@ -407,7 +430,7 @@ var callStranger = throttle(function(){
   }
   axios.post(url, dataObj, { headers: getHeaders()}).then(res => {
     console.log("CallStranger => ", res.data);
-    toast("1.用户发起视频通话");
+    println("1.User Start Video Call.");
     if(res.data.msg === "success"){
       var result = res.data;
       initAgoraOption(result.data);
@@ -418,18 +441,18 @@ var callStranger = throttle(function(){
     setStrangerUid(null);
     console.error("Call Stranger Error.", error);
   });
-}, 10, function(){
+}, config.allIntervalTime, function(){
   console.warn("Call Stranger Already Running...");
 })
 /**
- * 2.平台服务器转发用户发起的视频通话给主播
+ * 2.Server Forward User Call to Host.
  * @param {*} obj 
  */
 function videoCallYou(obj){
   if(config.inMatch){
     config.userRole = "host";
     publishLocalStream();
-    toast("匹配中，正好遇到对方匹配。",null,null,10 * 1000);
+    println("In Matching, Receive Other Match。",null,null,10 * 1000);
     return;
   }
   config.callYouTime = Date.now();
@@ -439,11 +462,10 @@ function videoCallYou(obj){
   setStrangerUid(obj.remoteUid);
   // initAgora();
   config.userRole = "host";
-  console.log("2.平台服务器转发用户发起的视频通话给主播");
-  toast("2.平台服务器转发用户发起的视频通话给主播");
+  println("2.Server Forward User Call to Host.");
 }
 /**
- * 3.主播接起视频通话
+ * 3.Host Answer Video Call.
  */
 var answerCall = throttle(function(){
   var url = `https://${config.domain}/api3/video/answer`;
@@ -453,61 +475,57 @@ var answerCall = throttle(function(){
     status: 1
   }
   axios.post(url, dataObj, { headers: getHeaders() }).then(res => {
-    console.debug("3.主播接起视频通话 ", res.data);
-    toast("3.主播接起视频通话",null, "success");
+    println("3.Host Answer Video Call.",res.data,"success");
   }).catch(error => {
-    console.error("3.主播接起视频通话 - 错误", error);
-    toast("3.主播接起视频通话 - 错误",null, "error");
+    println("3.Host Answer Video Call. - Error",error, "error");
   });
 }, 5, function(seconds){
-  console.log(`%c主播每${seconds}秒只能接起一次电话`,"color: #00F;");
+  console.log(`%cHost Only Answer Call Once In ${seconds}s.`,"color: #00F;");
 });
 /**
- * 4.平台服务器转发主播接起视频通话给用户
+ * 4.Server Forward Host Receive Call To Audience.
  */
 function strangerAnswerCall(obj){
-  console.log("4.平台服务器转发主播接起视频通话给用户", obj);
   config.chatNo = obj.chatNo;
-  toast("4.平台服务器转发主播接起视频通话给用户");
+  println("4.Server Forward Host Receive Call To Audience.", obj);
   // initAgora();
   publishLocalStream();
 }
 /**
- * 5.接起视频通话后挂断电话
+ * 5.You Hnag Up.
  */
 function youHangup(){
-  if(!getStrangerUid) return;
+  if(!getStrangerUid()) return;
   var url = `https://${config.domain}/api3/video/close`;
   var dataObj = {
     roomId: option.channel,
     remoteUid: +getStrangerUid()
   }
   axios.post(url, dataObj, { headers: getHeaders() }).then(res => {
-    toast("5.接起视频通话后挂断电话", res.data);
+    println("5.You Hnag Up.", res.data);
   }).catch(error => {
-    toast("5.接起视频通话后挂断电话 - 错误", error);
+    println("5.You Hnag Up. - Error", error, "error");
   });
   config.chatNo = null;
   leaveChannel(true);
 }
 /**
- * 6.平台服务端转发挂断电话给对方
+ * 6.Server Forward Hang Up To Other Side.
  */
 var strangerHangupYou = throttle(function(obj){
-  console.log("6.平台服务端转发挂断电话给对方", obj);
-  toast("6.平台服务端转发挂断电话给对方"+obj.chatNo);
+  println("6.Server Forward Hang Up To Other Side.",obj.chatNo);
   if(obj.chatNo === config.chatNo) {
     youHangup();
-    toast("ChatNo一致，挂断电话。");
+    println("ChatNo Is Same, Hang Up The Call.");
   }else if(!config.chatNo && config.inMatch){
     youHangup();
-    toast("对方长时间未接听，重新开始匹配。");
-    getRandomStranger();
+    toast("The other did not answer for a long time，Restart Matching.");
+    // getRandomStranger();
   }
 }, config.allIntervalTime, function(){
   console.warn("Stranger Hangup You Already Running...");
 });
-/** 7.平台服务端会每隔10s检查商户的余额是否满足当前通话，若是不满足，会主动发 CC 命令给用户端和主播端 */
+
 function debugCall(){
   console.log(`YouUid: ${getYouUid()} - strangerUid: ${getStrangerUid()}`);
   console.log(`You Chatno : ${config.chatNo} - inMatch: ${config.inMatch}`);
@@ -615,6 +633,26 @@ function startHeartBeat(){
 /**
  * 
  */
+var changeStranger = (function(){
+  var oldMatched = null;
+  return function(isMatched){
+    println("OldMatched: "+oldMatched);
+    if(isMatched === oldMatched){
+      println("Match state no change.");
+    }else{
+      println("Match state already changed.");
+      var onlyMatchedUse = document.querySelectorAll(".only-matched-use");
+      var onlyMatchedShow= document.querySelectorAll(".only-matched-show");
+      println("Only-Matched-Use: "+ onlyMatchedUse.length + " - Only-Matched-Show: "+ onlyMatchedShow.length);
+      for(let i=0; i<onlyMatchedUse.length; i++) enableView(onlyMatchedUse[i], isMatched);
+      for(let j=0; j<onlyMatchedShow.length; j++) showView(onlyMatchedShow[j], isMatched ? null : "none");
+    }
+    oldMatched = isMatched;
+  }
+})();
+// function changeStranger(isMatched){
+  
+// }
 function getStrangerUid(){
   console.log("%cGet Stranger Uid: "+config.strangerUid, "color: red;");
   if(!config.strangerUid) config.inMatch = false;
@@ -622,6 +660,7 @@ function getStrangerUid(){
   return config.strangerUid;
 }
 function setStrangerUid(uid){
+  changeStranger(uid);
   if(!uid) {
     config.strangerUid = null;
     config.chatNo = null;
@@ -634,7 +673,7 @@ function setStrangerUid(uid){
   }else config.strangerUid = uid;
 }
 function getYouUid(){
-  if(config.firebaseLogin) return localStorage.getItem("uid");
+  if(config.firebaseLogin) return storageHelper.getItem("uid");
 
   if(config.user.uid === "YFa0FqVUpybz72Qm9MmZCw4troq2") return "24680";
   else return "13579";
@@ -648,12 +687,12 @@ function setStrangerState(state, msg) {
   }
 }
 /**
- * 获取新的随机陌生人，并结束当前通话（如果正在通话）
+ * Match New Stranger, And Over Current call(if calling).
  */
 var getRandomStranger = throttle(function(){
   views.conversationList.innerHTML = "";
   if(config.chatNo){
-    toast("正在通话中，主动挂断电话");
+    println("In Calling, You Hang Up.");
     youHangup();
   }
   var url = `https://${config.domain}/api/together`;
@@ -671,7 +710,7 @@ var getRandomStranger = throttle(function(){
   }).catch(error => {
     setStrangerUid(null);
     console.error(error);
-    toast("getRandomStrangerError: "+error);
+    println("getRandomStrangerError: "+error);
   });
 }, config.allIntervalTime, function(seconds){
   console.warn(`Get Random Stranger Already Running...,In ${seconds}s Only Excute Once.`);
@@ -686,10 +725,10 @@ function addChatListener(){
       return;
     }
     var nowTime = Date.now(), callYouTime = config.callYouTime || 0, lastMatchTime = config.lastMatchTime || 0;
-    toast(`NowTime: ${nowTime} - CallYouTime: ${callYouTime} - 时间差：${nowTime - callYouTime}`);
+    println(`NowTime: ${nowTime} - CallYouTime: ${callYouTime} - Time difference：${nowTime - callYouTime}`);
     if((nowTime - callYouTime) < 20 * 1000){
       // config.noFirstCall = true;
-      toast("已收到对方请求，现在接通。",null,null,10000);
+      println("Receive Call, Now Connect.",null,null,10000);
       initAgora();
       config.callYouTime = 0;
       config.noFirstMatch = true;
@@ -699,13 +738,13 @@ function addChatListener(){
       config.noFirstMatch = true;
       return;
     }else if(callYouTime > 1){
-      toast("长时间未接听对方通话邀请，服务器自动挂断", "准备主动发起请求", "warn", 5 * 1000);
+      println("Did not answer for a long time，Server hangs up automatically.", "Ready to call.", "warn", 5 * 1000);
     }else {
-      toast("未收到对方请求，准备主动发起请求。");
+      println("Call not received, Ready to call.");
     }
-    // toast(""+isNext,null,"tips");
+    // println(""+isNext,null,"tips");
     if(!isNext || !config.noFirstMatch || !getStrangerUid()){
-      toast("Already Login. Start match random stranger.");
+      println("Already Login. Start match random stranger.");
       getRandomStranger();
       config.noFirstMatch = true;
       showView(views.waitStranger);
@@ -743,9 +782,24 @@ function initAgoraOption(obj){
   option.uid = obj.id || obj.remoteId;
   option.token = obj.token;
 }
+async function getDevices(){
+  var result = null;
+  await AgoraRTC.getDevices (function(devices) {
+    // console.table(devices);
+    result = devices;
+  }, function(errStr){
+    // console.error("Failed to getDevice", errStr);
+    result = errStr;
+  });
+  return result;
+}
 // Create a client
 rtc.client = AgoraRTC.createClient({mode: "rtc", codec: "h264"});
 function initAgora(noRelease){
+  if(!AgoraRTC.checkSystemRequirements()){
+    toast("Sorry, You Browser Don't Support The Website, Please Change A Browswer.");
+    return false;
+  }
   console.log("initAgora : ", option.uid);
   //1 - Initialize the client
   rtc.client.init(option.appID, function () {
@@ -793,8 +847,8 @@ function releaseLocalStream(noRelease){
     setStrangerUid(null);
     console.error("3 - init local stream failed ", err);
     if(err.msg === "NotAllowedError"){
-      toast(err.info, err.msg, "error", 5000);
-    }else toast("Video Chat Error");
+      println(err.info, err.msg, "error", 5000);
+    }else println("Video Chat Error");
   });
 }
 var publishLocalStream = throttle(function(){
@@ -803,15 +857,15 @@ var publishLocalStream = throttle(function(){
     console.error(err);
     config.inPublishLocalStream = false;
   });
-  toast("Publish localstream : "+config.userRole, null,null, 10 * 1000);
+  println("Publish localstream : "+config.userRole, null,null, 10 * 1000);
 }, config.allIntervalTime, function(seconds){
-  console.warn(`${seconds}秒内只能发布一次本地流。`);
+  console.warn(`Publish localstream only excute once in ${seconds}s.`);
 });
 function unPublishLocalStream(){
-  toast("取消发布本地流",null, null, 5 * 1000);
+  println("Unpublish localstream.",null, null, 5 * 1000);
   rtc.client.unpublish(rtc.localStream, function(err){
-    toast("取消发布本地流失败", JSON.stringify(err), "warn", 5 * 1000);
-    console.log("UnPublish LocalStream Error : ", err);
+    println("Unpublish localstream - Failed.", JSON.stringify(err), "warn", 5 * 1000);
+    console.log("Unpublish LocalStream Error : ", err);
   });
   config.inPublishLocalStream = false;
 }
@@ -843,36 +897,34 @@ function addStreamListener(){
     console.info("------ Stream subscribed. ------ ");
     remoteStream.play("stranger-container", {fit: "contain"});
     console.log('stream-subscribed remote-uid: ', id);
-    console.log("对方发布了流");
+    console.log("Other side publish stream.");
   });
 
   rtc.client.on("stream-removed", function (evt) {
-    toast("Really Remove Remote Stream. ", null, "warn", 10 * 1000);
+    println("Really Remove Remote Stream. ", null, "warn", 10 * 1000);
     var remoteStream = evt.stream;
     var id = remoteStream.getId();
     var strangerVideo = document.querySelector("#stranger-container > div:last-child");
     if(strangerVideo.id.match("player")) {
       remoteStream.stop(strangerVideo.id);
-      toast("Remove StrangerStream : ", strangerVideo.id, "warn", 10 * 1000);
+      println("Remove StrangerStream : ", strangerVideo.id, "warn", 10 * 1000);
       strangerVideo.remove();
     }
     console.log('stream-removed remote-uid: ', id);
   });
   // local
   rtc.client.on("stream-unpublished", function(evt) {
-    toast("local stream unpublished", evt, null, 3 * 1000);
-    console.log("local stream unpublished : ", evt);
+    println("local stream unpublished", evt);
   });
   var publishedListener = throttle(function(evt){
-    toast("local stream published");
-    console.log("local stream published : ", evt);
+    println("local stream published",evt);
     config.inPublishLocalStream = true;
     if(config.userRole === "host") {
-      toast("AnswerCall => Publish localstream : "+getYouUid(), null,null, 10 * 1000);
+      println("AnswerCall => Publish localstream : "+getYouUid(), null,null, 10 * 1000);
       answerCall();
     }
   }, config.allIntervalTime, function(){
-    console.log("Stream-Published is Running...");
+    println("Stream-Published is Running...");
   });
   rtc.client.on("stream-published", publishedListener);
 }
@@ -886,7 +938,7 @@ function leaveChannel(unPublish){
     unPublishLocalStream();
     var strangerVideo = document.querySelector("#stranger-container > div:last-child");
     if(strangerVideo && strangerVideo.id.match("player")) {
-      toast("Remove StrangerStream : ", strangerVideo.id, "warn", 10 * 1000);
+      println("Remove StrangerStream : ", strangerVideo.id, "warn", 10 * 1000);
       strangerVideo.remove();
     }
   }
@@ -954,7 +1006,7 @@ function hideModal(e){
 }
 function sendGift(giftName){
   if(isEmpty(giftName)) {
-    toast("Gift name is : "+giftName,null,"",3000);
+    println("Gift name is : "+giftName,null,"",3000);
     return;
   }else if(!config.user) {
     toast("No Login, Click <Login> button to login.");
@@ -995,7 +1047,7 @@ function initRechargeList(){
       renderRechargeList(res.data.data);
     }else throw res.data.msg;
   }).catch(error => {
-    console.error(error);
+    println(error);
   })
 }
 function renderRechargeList(arr){
@@ -1027,7 +1079,7 @@ function choosePayment(payment){
 function rechargeDiamond(productIosId, payment){
   console.log("productIosId : ", productIosId);
   if(!productIosId) {
-    toast("No ProductIosId");
+    println("No ProductIosId");
     return;
   }
   if(payment === "stripe") rechargeByStripe(productIosId);
@@ -1045,20 +1097,23 @@ function rechargeSuccess(result){
   console.log("Recharge Success.", result);
   var modals = document.querySelectorAll(".modal:not(#recharge_modal)");
   console.log("modals.length : ", modals.lengthg);
-  for(var i=0; i<modals.length; i++) modals[i].style.display = "none";
+  for(var i=0; i<modals.length; i++) {
+    var cur = modals[i];
+    if(cur.style.display.length > 1) hideModal(cur);
+  }
   setTimeout(function(){
     queryDiamond(obj => {
       if(obj.success) toast("Success Recharge.", `You balance is : ${obj.diamond} diamond`, "success", 3000);
-      else toast("Query balance error!", obj.error, "error", 3000);
+      else toast("Query balance error!", "Plase try again or refresh the page.", "error", 3000);
     });
   }, 500);
 }
 function rechargeFailed(obj){
-  console.error("Recharge Failed.", obj);
+  println("Recharge Failed.", obj);
 }
 /* ------------------------------------ Stripe ------------------------------------ */
 const stripe = Stripe("pk_test_kKiIIn5jbIixQ96SV4NpPZyf00hulVQYuC");
-// 生产环境 - pk_live_Zt23ptBqWWJ8as6k2MBUF3xn00XviuaLpZ
+//  - pk_live_Zt23ptBqWWJ8as6k2MBUF3xn00XviuaLpZ
 function rechargeByStripe(productIosId){
   showModal("stripe_modal");
   var url = `https://${config.domain}/api/stripe/payment/init`;
@@ -1107,7 +1162,7 @@ function rechargeByStripe(productIosId){
     });
   }).catch(error => {
     console.error(error);
-    toast("Error!", error, "error", 5000);
+    println("Error!", error, "error", 5000);
   });
 }
 
@@ -1199,30 +1254,40 @@ function hidePopup(eleId) {
     showView(popPage, "none");
   }
 }
-
+/* ------------------------------------ Edit Base Info ------------------------------------ */
+function showBaseinfoPopup(){
+  var avatar = storageHelper.getItem("avatar") || "";
+  var coverShow = document.getElementById("cover_show");
+  coverShow.src = avatar ? avatar : config.user.photoURL;
+  showPopup("edit_baseinfo_popup");
+  addSaveBaseinfoListener();
+}
 function saveBaseinfo(){
   var url = `https://${config.domain}/api/user/setProfile`;
   var cover = document.getElementById("cover").files[0];
   var nickname = document.getElementById("nickname").value;
-  var age = +document.getElementById("age").value;
+  // var age = +document.getElementById("age").value;
   console.log("Cover: ", cover);
   console.log("Nickname: ",nickname);
-  console.log("Age: ",age);
-  if(!nickname || !age) {
-    toast("Your nickname or age is invalid value.", "Please check again.", "warn", 2000);
+  // console.log("Age: ",age);
+  if(!nickname) {
+    toast("Your nickname is invalid value.", "Please check again.", "warn", 2000);
     return;
   }
   var form = new FormData();
   if(cover) form.append("filename", cover);
   form.append("nickname", nickname);
-  form.append("age", age);
+  // form.append("age", age);
   axios.post(url, form, { headers: getHeaders()}).then(res => {
     console.log("SaveBaseInfo => ", res.data);
     if(res.data.msg === "success") {
       toast("Success",null, "success", 3000);
+      login();
+      hidePopup("edit_baseinfo_popup");
     }else throw res.data.msg;
   }).catch(error => {
-    toast("Failed", error, "error", 3000);
+    println("SaveBaseInfo",error);
+    toast("Failed", "Please try again or refresh the page.", "error", 3000);
   });
 }
 function addSaveBaseinfoListener(){
@@ -1231,14 +1296,20 @@ function addSaveBaseinfoListener(){
   var cover = document.getElementById("cover");
   document.getElementById("nickname").value = config.user.displayName;
   var coverShow = document.getElementById("cover_show");
-  coverShow.src = config.user.photoURL;
   cover.onchange = function(){
-    coverShow.src = URL.createObjectURL(cover.files[0]);
-    var tips = document.querySelector(".cover .tips-upfile");
-    if(tips) tips.remove();
+    var file = cover.files[0];
+    if(file.size > config.coverMaxSize){
+      toast(`Cover file size cannot exceed ${config.coverMaxSize/1024/1024}m.`,null, "warn", 3000);
+    }else if(!/image/.test(file.type)){
+      toast("You should choose a image file",null, "warn", 3000);
+    }else {
+      coverShow.src = URL.createObjectURL(cover.files[0]);
+      var tips = document.querySelector(".cover .tips-upfile");
+      if(tips) tips.remove();
+    }
   }
 }
-/* ------------------------------------ Toast ------------------------------------ */
+/* ------------------------------------ Toast and Println ------------------------------------ */
 function delayRemoveToast(itemNode, duration){
   setTimeout(function(){
     itemNode.classList.add("remove-toast-item");
@@ -1248,7 +1319,7 @@ function delayRemoveToast(itemNode, duration){
   }, duration);
 }
 /**
- * 懒函数
+ * Lazy Functiono
  */
 function getToastList(){
   var list = document.getElementById("toast_list");
@@ -1272,8 +1343,7 @@ function getNowTime(){
  * @param {Number} duration - millisecond
  */
 function toast(title, msg , type, duration) {
-  console.log("%c"+getNowTime()+" "+title, "font-size: 20px; background: #4285f4; color: #FFF;");
-  if(msg) console.log(msg);
+  println(title, msg, type);
   if(!title) throw new UserError("Toast must set Title");
   if(!duration) duration = 2000;
   var item = document.createElement("div");
@@ -1293,4 +1363,19 @@ function toast(title, msg , type, duration) {
   }
   getToastList().appendChild(item);
   delayRemoveToast(item, duration);
+}
+function println(title, msg, type, other){
+  if(!type) type = "normal";
+  var hexColor = "#000000";
+  switch(type){
+    case "success": hexColor = "#34a853"; break;
+    case "warn"   : hexColor = "#fbbc05"; break;
+    case "error"  : hexColor = "#ea4335"; break;
+    default       : hexColor = "#123456"; break;
+  }
+  console.log("%c"+"& - "+getNowTime()+" "+title, `font-size: 16px; font-weight: 500; color: ${hexColor}`);
+  if(!msg) return;
+  if(typeof msg !== "string") console.log("& - Object => ", msg);
+  else if(msg) console.log("& - %c"+msg, "color: #4285f4;");
+  else console.warn(msg);
 }

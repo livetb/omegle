@@ -4,8 +4,19 @@
 <head>
   <meta charset="utf-8">
   <meta http-equiv="X-UA-Compatible" content="IE=edge">
-  <meta name="viewport" content="width=device-width,initial-scale=1.0">
-  <title>Omegle</title>
+  <meta name="viewport" content="user-scalable=no, initial-scale=1.0, width=device-width, maximum-scale=1.0, minimal-ui">
+  <meta name="description" content="Omegle is a great place to meet new friends. When you use Omegle, we pick another user at random and let you have a one-on-one chat with each other.">
+  <title>Omegle: Talk to strangers!</title>
+  <script type="application/ld+json">
+    {
+      "@context": "http://schema.org",
+      "@type": "Talk",
+      "url": "https://omegle.host",
+      "logo": "https://omegle.host/assets/img/logo-icon.png",
+      "Title": "Omegle: Talk to strangers!",
+      "description": "Omegle is a great place to meet new friends. When you use Omegle, we pick another user at random and let you have a one-on-one chat with each other."
+    }
+    </script>
   <!-- firebase -->
   <link type="text/css" rel="stylesheet" href="https://cdn.firebase.com/libs/firebaseui/3.5.2/firebaseui.css" />
   <!-- custom -->
@@ -33,22 +44,26 @@
     </div>
   </header>
 </div>
-
+<div class="auto-container">
+  <div class="auto-padding header-text">
+    <p class="header-text">The Internet is full of cool people; Omegle lets you meet them. When you use Omegle, we pick someone else at random so you can have a one-on-one chat.</p>
+  </div>
+</div>
 <div class="auto-container">
   <main id="main" class="auto-padding">
     <div id="you-and-stranger">
-      <div id="stranger-container"> <!-- 陌生人容器 -->
+      <div id="stranger-container"> <!-- Stranger -->
         <div class="only-nologin-show logo-bg">
           <img src="./assets/img/logo-text.png" />
         </div>
         <div id="wait_stranger" visible-display="flex" class="lds-ring"><div></div><div></div><div></div><div></div></div>
       </div>
-      <div id="you-container"> <!-- 自己容器 -->
+      <div id="you-container"> <!-- You -->
          <div class="only-nologin-show logo-bg">
            <img src="./assets/img/logo-text.png" />
          </div>
       </div>
-      <!-- 匹配陌生人  -->
+      <!-- Start Or Next  -->
       <div>
         <div class="start-or-cancel">
           <input type="checkbox" id="start-or-next" />
@@ -57,23 +72,33 @@
         </div>
       </div>
     </div>
-    <!-- 文字&送礼 -->
+    <!-- message and gift -->
     <div id="chat-container">
       <div id="conversation-list">
         <p id="server_state">No login.</p>
       </div>
       <div id="conversation-bar">
-        <div id="gift" class="only-connect-use" disabled="true">
-          <img src="./assets/img/gift.png" />
-        </div>
-        <textarea id="you-input" class="only-connect-use hide-scroll-bar"></textarea>
-        <div id="send-msg" class="only-connect-use" disabled="true">
+        <textarea id="you-input" class="only-matched-use hide-scroll-bar"></textarea>
+        <div id="send-msg" class="only-matched-use">
           <span>Send</span>
           <span class="key-enter">Enter</span>
+        </div>
+        <div id="gift" class="only-matched-show" visible-display="inline-block">
+          <img src="./assets/img/gift.png" />
         </div>
       </div>
     </div>
   </main>
+</div>
+
+<div class="auto-container">
+  <div class="auto-padding footer">
+    <article class="footer-text">By using the Omegle Web site, and/or related products and/or services , you agree to the following terms:  If you are under 18, don’t use Omegle. Do not transmit nudity, sexually harass anyone, publicize other peoples' private information, make statements that defame or libel anyone, violate intellectual property rights, use automated programs to start chats, or behave in any other inappropriate or illegal way on Omegle. Understand that human behavior is fundamentally uncontrollable, that the people you encounter on Omegle may not behave appropriately, and that they are solely responsible for their own behavior. Use Omegle at your own peril. Disconnect if anyone makes you feel uncomfortable. You may be denied access to Omegle for inappropriate behavior, or for any other reason. OMEGLE IS PROVIDED AS IS, AND TO THE MAXIMUM EXTENT ALLOWED BY APPLICABLE LAW, IT IS PROVIDED WITHOUT ANY WARRANTY, EXPRESS OR IMPLIED, NOT EVEN A WARRANTY OF MERCHANTABILITY OR FITNESS FOR A PARTICULAR PURPOSE. TO THE MAXIMUM EXTENT ALLOWED BY APPLICABLE LAW, THE PROVIDER OF OMEGLE, AND ANY OTHER PERSON OR ENTITY ASSOCIATED WITH OMEGLE'S OPERATION, SHALL NOT BE HELD LIABLE FOR ANY DIRECT OR INDIRECT DAMAGES ARISING FROM THE USE OF OMEGLE, OR ANY OTHER DAMAGES RELATED TO OMEGLE OF ANY KIND WHATSOEVER. By using Omegle, you accept the practices outlined in Omegle's PRIVACY POLICY and INFORMATION ABOUT THE USE OF COOKIES.
+
+
+* Omegle video chat is moderated. However, moderation is not perfect. You may still encounter people who misbehave. They are solely responsible for their own behavior.
+    </article>
+  </div>
 </div>
 
 <!-- Login -->
@@ -179,11 +204,11 @@
     </div>
     <h1>Hello World.</h1>
   </div>
-  <!-- Stripe -->
+  <!-- base info -->
   <div class="popup-page" id="edit_baseinfo_popup" visible-display="flex">
-    <div class="popup-header">
+    <!-- <div class="popup-header">
       <span class="close-popup" onclick="hidePopup('edit_baseinfo_popup')">Cancel</span>
-    </div>
+    </div> -->
     <div class="popup-content">
       <div class="cover">
         <label>
@@ -198,10 +223,10 @@
         <input type="text" id="nickname" />
       </div>
       <!-- age -->
-      <div class="age">
+      <!-- <div class="age">
         <h2>How old are you?</h2>
         <input type="number" id="age" max="999" maxlength="3" value="18"/>
-      </div>
+      </div> -->
     </div>
     <!-- Next -->
     <span id="save_baseinfo">Next</span>

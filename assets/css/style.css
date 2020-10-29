@@ -28,7 +28,8 @@ body {
   max-width: 900px;
   min-width: 300px;
   margin: auto;
-  box-shadow: 0 0 1px 0 rgb(211, 212, 213);
+  box-shadow: 0 0 1px 0 #FFF7EF;
+  overflow-y: hidden;
 }
 @media screen and (min-width: 900px) {
   .auto-padding { padding-left: 1.5rem; padding-right: 1.5rem; }
@@ -167,6 +168,17 @@ input[type="number"]{
   line-height: inherit;
   color: #89c2fa;
 }
+
+div.header-text {
+  background-color: #FFF7EF;
+}
+p.header-text {
+  font-size: 15px;
+  color: #000;
+  font-family: Helvetica;
+  margin: 0;
+  padding-top: 1rem;
+}
 /* ------------------------------------ chat ------------------------------------ */
 #main {
   display: flex;
@@ -198,6 +210,7 @@ input[type="number"]{
 #chat-container {
   display: flex;
   flex: 4;
+  min-width: 300px;
   flex-direction: column;
   justify-content: space-between;
 }
@@ -397,6 +410,10 @@ input#start-or-next:checked + label + #cancel-next {
 }
 #conversation-bar > * {
   height: 3rem;
+  margin-left: 1rem;
+}
+#conversation-bar > *:first-child {
+  margin: 0;
 }
 #gift {
   cursor: pointer;
@@ -413,7 +430,6 @@ input#start-or-next:checked + label + #cancel-next {
 #you-input {
   resize: none;
   flex: 1;
-  margin: 0 1rem;
   border: 1px solid #979797;
 }
 #send-msg {
@@ -435,6 +451,15 @@ input#start-or-next:checked + label + #cancel-next {
   font-size: 0.6rem;
   color: #99CCFF;
 }
+#send-msg:disabled {
+  background-color: #FFFFFF;
+}
+#send-msg:disabled > span:first-child {
+  color: #979797;
+}
+#send-msg:disabled > span:last-child {
+  color: #A1C3E6;
+}
 @media screen and ( max-width: 750px ) {
   .talk-to-strangers { display: none; }
 }
@@ -449,6 +474,17 @@ input#start-or-next:checked + label + #cancel-next {
 }
 @media screen and ( max-width: 500px ) {
   .logo-icon + img { display: none; }
+}
+/* ------------------------------------ Footer ------------------------------------ */
+.footer {
+  background-color: #FFF7EF;
+}
+.footer-text {
+  padding: 2.5rem 0;
+  white-space: pre-line;
+  font-family: Helvetica;
+  font-size: 15px;
+  color: #000;
 }
 /* ------------------------------------ Modal & Dialog ------------------------------------ */
 .dialog-close {
@@ -554,14 +590,17 @@ input#start-or-next:checked + label + #cancel-next {
 #edit_baseinfo_popup {
   display: flex;
   flex-direction: column;
-  justify-content: space-between;
+  justify-content: flex-end;
   align-items: center;
+  background-color: #FFF7EF;
 }
 .cover {
   display: flex;
   flex-direction: column;
   justify-content: center;
   align-items: center;
+  max-width: 300px;
+  margin-bottom: 1.5rem;
 }
 .tips-upfile {
   font-size: 0.7rem;
@@ -574,22 +613,39 @@ input#start-or-next:checked + label + #cancel-next {
   display: none;
 }
 #cover + img {
-  width: 3rem;
-  height: 3rem;
   margin-bottom: 1.5rem;
   cursor: pointer;
+}
+.nickname > h2 {
+  font-family: SF Pro Display Bold;
+  color: #565656;
+  font-size: 0.9rem;
+}
+.nickname > input {
+  width: 300px;
+  height: 3rem;
+  border-radius: 0;
+  border: 1px #979797 solid;
+}
+@media screen and ( min-width: 500px ){
+  #cover + img { max-width: 300px; max-height: 300px; }
+}
+@media screen and ( max-width: 500px ){
+  #cover + img { max-width: 120px; max-height: 120px; }
 }
 
 #save_baseinfo {
   display: inline-block;
-  width: 10rem;
-  height: 2rem;
-  font-size: 0.8rem;
+  width: 8rem;
+  height: 2.5rem;
+  font-size: 1rem;
   color: white;
-  line-height: 2rem;
-  margin-bottom: 1rem;
+  line-height: 2.5rem;
+  margin-bottom: 5rem;
+  margin-top: 3rem;
   cursor: pointer;
-  background-color: pink;
+  background-color: #298FFE;
+  border-radius: 0.4rem;
   text-align: center;
 }
 /* ------------------------------------ Login ------------------------------------ */
@@ -619,13 +675,9 @@ input#start-or-next:checked + label + #cancel-next {
 .only-login-show {
   display: none;
 }
-.only-login-use:disabled {
-  opacity: 0.5;
+.only-matched-show {
+  display: none;
 }
-.only-connect-use:disabled {
-  opacity: 0.5;
-}
-
 /* ------------------------------------ Gift ------------------------------------ */
 #gift_modal {
   z-index: 1050;

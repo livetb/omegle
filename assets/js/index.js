@@ -847,6 +847,7 @@ function releaseLocalStream(noRelease){
   // rtc.localStream.setScreenProfile("480p_2");
   // rtc.localStream.setVideoProfile("360p");
   // videoProfile_default: 480p
+  rtc.localStream.setVideoProfile("240p");
   rtc.localStream.init(function () {
     console.log("3 - init local stream success");
     //3.1 - play stream with html element id "local_stream"

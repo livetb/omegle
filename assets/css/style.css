@@ -271,6 +271,7 @@ p.header-text {
 #stranger-container video, #you-container video {
   left: 0;
   top: 0;
+  background-color: #555555;
 }
 #you-container {
   margin: 1rem 0;
@@ -451,13 +452,13 @@ input#start-or-next:checked + label + #cancel-next {
   font-size: 0.6rem;
   color: #99CCFF;
 }
-#send-msg:disabled {
+#send-msg.cus-disabled {
   background-color: #FFFFFF;
 }
-#send-msg:disabled > span:first-child {
+#send-msg.cus-disabled > span:first-child {
   color: #979797;
 }
-#send-msg:disabled > span:last-child {
+#send-msg.cus-disabled > span:last-child {
   color: #A1C3E6;
 }
 @media screen and ( max-width: 750px ) {

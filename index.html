@@ -52,13 +52,13 @@
 <div class="auto-container">
   <main id="main" class="auto-padding">
     <div id="you-and-stranger">
-      <div id="stranger-container"> <!-- Stranger -->
+      <div id="stranger-container" onclick="fullScreen(this)"> <!-- Stranger -->
         <div class="only-nologin-show logo-bg">
           <img src="./assets/img/logo-text.png" />
         </div>
         <div id="wait_stranger" visible-display="flex" class="lds-ring"><div></div><div></div><div></div><div></div></div>
       </div>
-      <div id="you-container"> <!-- You -->
+      <div id="you-container" onclick="fullScreen(this)"> <!-- You -->
          <div class="only-nologin-show logo-bg">
            <img src="./assets/img/logo-text.png" />
          </div>
@@ -78,8 +78,8 @@
         <p id="server_state">No login.</p>
       </div>
       <div id="conversation-bar">
-        <textarea id="you-input" class="only-matched-use hide-scroll-bar"></textarea>
-        <div id="send-msg" class="only-matched-use">
+        <textarea id="you-input" class="only-matched-use hide-scroll-bar cus-disabled" disabled></textarea>
+        <div id="send-msg" class="only-matched-use cus-disabled" disabled>
           <span>Send</span>
           <span class="key-enter">Enter</span>
         </div>

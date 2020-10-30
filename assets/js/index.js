@@ -25,8 +25,13 @@ function showView(ele, displayName){
 }
 function enableView(ele, enable){
   if(!ele) throw "Element not exists";
-  if(enable) ele.removeAttribute("disabled");
-  else ele.setAttribute("disabled", "disabled");
+  if(enable){
+    ele.removeAttribute("disabled");
+    ele.classList.remove("cus-disabled");
+  }else {
+    ele.setAttribute("disabled", "true");
+    ele.classList.add("cus-disabled");
+  }
 }
 function isEmpty(str){
   if(typeof str !== "string") return true;
@@ -122,7 +127,7 @@ window.addEventListener('beforeunload', (event) => {
   // Cancel the event as stated by the standard.
   event.preventDefault();
   // Older browsers supported custom message
-  // event.returnValue = 'Confirm Leave?';
+  event.returnValue = "See you again.";
 });
 /* ------------------------------------ MD5 ------------------------------------ */
 function md5Login(firebaseUid, requestTime){
@@ -419,7 +424,6 @@ function call20SCheck(){
  * 1.User Start Video Call, Only Excute Once In {config.allIntervalTime} seconds.
  */
 var callStranger = throttle(function(){
-  views.conversationList.innerHTML = "";
   var url = `https://${config.domain}/api3/video/call`;
   var dataObj = {
     roomId: option.channel,
@@ -494,7 +498,7 @@ function strangerAnswerCall(obj){
 /**
  * 5.You Hnag Up.
  */
-function youHangup(){
+function youHangup(callFun){
   if(!getStrangerUid()) return;
   var url = `https://${config.domain}/api3/video/close`;
   var dataObj = {
@@ -503,8 +507,10 @@ function youHangup(){
   }
   axios.post(url, dataObj, { headers: getHeaders() }).then(res => {
     println("5.You Hnag Up.", res.data);
+    if(typeof callFun === "function") callFun(true);
   }).catch(error => {
     println("5.You Hnag Up. - Error", error, "error");
+    if(typeof callFun === "function") callFun(false);
   });
   config.chatNo = null;
   leaveChannel(true);
@@ -557,7 +563,7 @@ function sendMsg(msg){
     if(res.data.msg === "success") {
       setTimeout(() => {
         document.querySelector(`.id-${randomId}`).classList.remove("sending-msg");
-      }, 500);
+      }, 100);
     }
     else document.querySelector(`.id-${randomId}`).classList.add("send-failed");
   }).catch(error => {
@@ -630,9 +636,13 @@ function startHeartBeat(){
     }
   }, 10 * 1000);
 }
-/**
- * 
- */
+function disabledOnlyMatchedView(isMatched){
+  var onlyMatchedUse = document.querySelectorAll(".only-matched-use");
+  var onlyMatchedShow= document.querySelectorAll(".only-matched-show");
+  println("Only-Matched-Use: "+ onlyMatchedUse.length + " - Only-Matched-Show: "+ onlyMatchedShow.length);
+  for(let i=0; i<onlyMatchedUse.length; i++) enableView(onlyMatchedUse[i], isMatched);
+  for(let j=0; j<onlyMatchedShow.length; j++) showView(onlyMatchedShow[j], isMatched ? null : "none");
+}
 var changeStranger = (function(){
   var oldMatched = null;
   return function(isMatched){
@@ -640,12 +650,13 @@ var changeStranger = (function(){
     if(isMatched === oldMatched){
       println("Match state no change.");
     }else{
+      rtc.client = AgoraRTC.createClient({mode: "rtc", codec: "vp8"});
       println("Match state already changed.");
-      var onlyMatchedUse = document.querySelectorAll(".only-matched-use");
-      var onlyMatchedShow= document.querySelectorAll(".only-matched-show");
-      println("Only-Matched-Use: "+ onlyMatchedUse.length + " - Only-Matched-Show: "+ onlyMatchedShow.length);
-      for(let i=0; i<onlyMatchedUse.length; i++) enableView(onlyMatchedUse[i], isMatched);
-      for(let j=0; j<onlyMatchedShow.length; j++) showView(onlyMatchedShow[j], isMatched ? null : "none");
+      var serverState = views.conversationList.firstElementChild;
+      serverState.innerText = isMatched ? "Already matched stranger." : "No match stranger.";
+      views.conversationList.innerHTML = "";
+      views.conversationList.appendChild(serverState);
+      disabledOnlyMatchedView(isMatched);
     }
     oldMatched = isMatched;
   }
@@ -690,7 +701,6 @@ function setStrangerState(state, msg) {
  * Match New Stranger, And Over Current call(if calling).
  */
 var getRandomStranger = throttle(function(){
-  views.conversationList.innerHTML = "";
   if(config.chatNo){
     println("In Calling, You Hang Up.");
     youHangup();
@@ -743,7 +753,7 @@ function addChatListener(){
       println("Call not received, Ready to call.");
     }
     // println(""+isNext,null,"tips");
-    if(!isNext || !config.noFirstMatch || !getStrangerUid()){
+    if(!isNext || !config.chatNo || !getStrangerUid()){
       println("Already Login. Start match random stranger.");
       getRandomStranger();
       config.noFirstMatch = true;
@@ -794,7 +804,7 @@ async function getDevices(){
   return result;
 }
 // Create a client
-rtc.client = AgoraRTC.createClient({mode: "rtc", codec: "h264"});
+rtc.client = AgoraRTC.createClient({mode: "rtc", codec: "vp8"});
 function initAgora(noRelease){
   if(!AgoraRTC.checkSystemRequirements()){
     toast("Sorry, You Browser Don't Support The Website, Please Change A Browswer.");
@@ -834,7 +844,9 @@ function releaseLocalStream(noRelease){
     screen: config.shareScreen,
   });
   //3 - Initialize the local stream
-  rtc.localStream.setScreenProfile("480p_2");
+  // rtc.localStream.setScreenProfile("480p_2");
+  // rtc.localStream.setVideoProfile("360p");
+  // videoProfile_default: 480p
   rtc.localStream.init(function () {
     console.log("3 - init local stream success");
     //3.1 - play stream with html element id "local_stream"
@@ -864,8 +876,7 @@ var publishLocalStream = throttle(function(){
 function unPublishLocalStream(){
   println("Unpublish localstream.",null, null, 5 * 1000);
   rtc.client.unpublish(rtc.localStream, function(err){
-    println("Unpublish localstream - Failed.", JSON.stringify(err), "warn", 5 * 1000);
-    console.log("Unpublish LocalStream Error : ", err);
+    println("Unpublish localstream - Failed.", err, "warn", 5 * 1000);
   });
   config.inPublishLocalStream = false;
 }
@@ -912,6 +923,17 @@ function addStreamListener(){
     }
     console.log('stream-removed remote-uid: ', id);
   });
+  var onPeerLeave = throttle(function(evt) {
+    var uid = evt.uid;
+    var reason = evt.reason;
+    console.log("remote user left ", uid, "reason: ", reason);
+    youHangup(function(success){
+      toast("Other side already left.","Reason: "+reason, null, 3000);
+    });
+  }, 5, function(seconds){
+    println(`onPeerLeave only excute once in ${seconds}s.`);
+  });
+  rtc.client.on("peer-leave", onPeerLeave);
   // local
   rtc.client.on("stream-unpublished", function(evt) {
     println("local stream unpublished", evt);

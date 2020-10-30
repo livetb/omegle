@@ -81,7 +81,7 @@ function fullScreen(ele) {
 function getHeaders(){
   var nowTime = Date.now();
   return {
-    "mid": "1122010",
+    // "mid": "1122010",
     "timestamp": nowTime,
     "uid": +getYouUid(),
     "sign": config.firebaseLogin ? md5Sign(storageHelper.getItem("uid"), nowTime) : 1111,
@@ -101,14 +101,14 @@ function UserError(msg, status){
 UserError.prototype.toString = function(){
   return "UserError : " + this.msg;
 }
-console.error = (func => {
-  return (...args) => {
-    // 在这里就可以收集到console.error的错误
-    // 做一些事
-    console.log("Listener Error. ",args);
-    func.apply(console, args);
-  }
-})(console.error);
+// console.error = (func => {
+//   return (...args) => {
+//     // 在这里就可以收集到console.error的错误
+//     // 做一些事
+//     console.log("Listener Error. ",args);
+//     func.apply(console, args);
+//   }
+// })(console.error);
 
 // window.addEventListener("error", function(message, source, lineno, colno, error){
 //   console.log("Listener Error. ",error);
@@ -121,23 +121,24 @@ console.error = (func => {
 //     if(title && type) println(title, error.msg, type, 3000);
 //   }
 // });
-window.addEventListener('beforeunload', (event) => {
-  youHangup();
-  storageHelper.setItem("leaveTime", getNowTime());
-  // Cancel the event as stated by the standard.
-  event.preventDefault();
-  // Older browsers supported custom message
-  event.returnValue = "See you again.";
-});
+
+// window.addEventListener('beforeunload', (event) => {
+//   youHangup();
+//   storageHelper.setItem("leaveTime", getNowTime());
+//   // Cancel the event as stated by the standard.
+//   event.preventDefault();
+//   // Older browsers supported custom message
+//   event.returnValue = "See you again.";
+// });
 /* ------------------------------------ MD5 ------------------------------------ */
 function md5Login(firebaseUid, requestTime){
-  var key = "5750fde891460434ede95993fbd8ec33";
+  var key = "fjsihaueoewhdasewrjZgflokejiOKkjhjwiyeKNHJd2342";
   var str = firebaseUid+requestTime+key;
   return hex_md5(str).toUpperCase();
 }
 function md5Sign(timestamp, uid) {
   var mid = "1122010";
-  var key = "5750fde891460434ede95993fbd8ec33";
+  var key = "fjsihaueoewhdasewrjZgflokejiOKkjhjwiyeKNHJd2342";
   var str = mid + timestamp + uid + key;
   return hex_md5(str).toUpperCase();
 }
@@ -246,7 +247,7 @@ function login(successTips, failedTips){
     loginId: config.user.uid,
     nickName: config.user.displayName,
     sign: md5Login(config.user.uid, nowTime),
-    appId: 43,
+    appId: 31,
     thirdType: 6
   }
   axios.post(url, dataObj).then(res => {
@@ -312,14 +313,15 @@ const views = {
 }
 var config = {
   isTest: true,
+  videoCall: true,
+  shareScreen: !Boolean(getQueryVariable("screen")),
   allIntervalTime: 10, // Limit User Operation in x Seconds, Only Excute Once.
   firebaseLogin: true, // Start Firebase Verify.
-  shareScreen: !Boolean(getQueryVariable("screen")),
   inMatch: false,
   userRole: "audience",
   videoScale: 0.7,
   heartbeat: 0, 
-  domain: "t.livego.live",
+  domain: "t.livehub.cloud", //"t.livego.live" , "vfun.mixit.fun"
   strangerUid: null,
   coverMaxSize: 2 * 1024 * 1024, //2m
   giftList: {
@@ -328,6 +330,9 @@ var config = {
     flowers: 300,
     rocket: 1000
   }
+}
+function getDomain(){
+  
 }
 println(`ShareScreen: ${config.shareScreen}`, null, "success", 5000);
 /**
@@ -394,7 +399,7 @@ function onSendMsgListener(){
   var sendMsgBtn = document.getElementById("send-msg");
 
   views.youInput.addEventListener("keyup", function(e){
-    console.log("KeyCode => ", e.code);
+    // console.log("KeyCode => ", e.code);
     if(e.code.match("Enter")) {
       var str =  views.youInput.value;
       if(isEmpty(str)) return;
@@ -453,6 +458,7 @@ var callStranger = throttle(function(){
  * @param {*} obj 
  */
 function videoCallYou(obj){
+  console.warn(obj);
   if(config.inMatch){
     config.userRole = "host";
     publishLocalStream();
@@ -522,6 +528,7 @@ var strangerHangupYou = throttle(function(obj){
   println("6.Server Forward Hang Up To Other Side.",obj.chatNo);
   if(obj.chatNo === config.chatNo) {
     youHangup();
+    toast("The other already left.");
     println("ChatNo Is Same, Hang Up The Call.");
   }else if(!config.chatNo && config.inMatch){
     youHangup();
@@ -548,6 +555,7 @@ function receiveMsg(msg, isGift){
 function sendMsg(msg){
   if(!window.socket) throw new UserError("No Connected Server.", 1);
   if(!config.strangerUid) throw new UserError("No Match Stranger.", 1);
+  if(isEmpty(msg)) throw new UserError("Message Is Empty.", 1);
   var msgNode = document.createElement("p");
   var randomId = Math.random().toString().substr(2);
   msgNode.setAttribute("class", `you-msg sending-msg id-${randomId}`);
@@ -577,8 +585,18 @@ function initConnect(wss){
   console.log("Only Connect use - length : ", onlyConnectUser.length);
   for(var i=0; i<onlyConnectUser.length; i++) onlyConnectUser[i].setAttribute("disabled",`${!Boolean(wss)}`);
 }
-function commitReceiveMsg(){
-
+function commitReceiveMsg(obj){
+  var url = `https://${config.domain}/api/websocket/commit`;
+  var dataObj = {
+    key: obj.key,
+    requestId: obj.requestId,
+    remoteUid: getYouUid()
+  }
+  axios.post(url, dataObj, { headers: getHeaders()}).then(res => {
+    println("Commit Success => ", res.data, "success");
+  }).catch(error => {
+    println("Commit Error => ", error, "error");
+  })
 }
 /**
  * Only Login Excute.
@@ -603,6 +621,7 @@ function connectSocket(){
   socket.addEventListener('message', function (event) {
       var obj = JSON.parse(event.data);
       if(obj.key !== "HB") console.log("Message from server : ", event.data);
+      if(obj.levelType === 20) commitReceiveMsg(obj);
       switch(obj.key){
         case "MC": {
           var isGift = obj.temp === "3";
@@ -706,14 +725,15 @@ var getRandomStranger = throttle(function(){
     youHangup();
   }
   var url = `https://${config.domain}/api/together`;
-  axios.post(url, { code: getQueryVariable("id") }, { headers: getHeaders()}).then(res => {
+  var dataObj = { code: getQueryVariable("id") };
+  axios.post(url, config.isTest ? dataObj : null, { headers: getHeaders()}).then(res => {
     console.log("Success + get random stranger + ", res.data);
     var result = res.data;
     if(result.msg === "success") {
       setStrangerUid(result.data.userInfo.uid);
       initAgoraOption(result.data);
-      // initAgora(true);
-      callStranger();
+      if(config.videoCall) callStranger();
+      if(!config.videoCall) showView(views.waitStranger, "none");
       views.strangerContainer.style.backgroundImage = `url(${res.data.data.userInfo.avatar})`;
     }
     else throw "Failed : GetRandomStranger";
@@ -723,17 +743,11 @@ var getRandomStranger = throttle(function(){
     println("getRandomStrangerError: "+error);
   });
 }, config.allIntervalTime, function(seconds){
-  console.warn(`Get Random Stranger Already Running...,In ${seconds}s Only Excute Once.`);
+  toast(`Only match once in ${seconds} seconds.`, "Please try again later", "warn", 3000);
 });
 
 function addChatListener(){
-  views.startOrNext.addEventListener("change", function(){
-    var isNext = this.checked;
-    if(!config.user){
-      this.checked = false;
-      showLogin();
-      return;
-    }
+  var startMatch = throttle(function(isNext){
     var nowTime = Date.now(), callYouTime = config.callYouTime || 0, lastMatchTime = config.lastMatchTime || 0;
     println(`NowTime: ${nowTime} - CallYouTime: ${callYouTime} - Time difference：${nowTime - callYouTime}`);
     if((nowTime - callYouTime) < 20 * 1000){
@@ -763,6 +777,19 @@ function addChatListener(){
     }else {
       toast("Really Next?","Clcik <Really?> Button to Match Next Stranger.", "warn", 6000);
     }
+  }, config.allIntervalTime, function(seconds){
+    views.startOrNext.checked = false;
+    toast(`Only match once in ${seconds} seconds.`, "Please try again later", "warn", 3000);
+  });
+
+  views.startOrNext.addEventListener("change", function(){
+    var isNext = this.checked;
+    if(!config.user){
+      this.checked = false;
+      showLogin();
+      return;
+    }
+    startMatch(isNext);
   });
   views.cancelNext.addEventListener("click", function(){
     views.startOrNext.checked = false;
@@ -809,6 +836,10 @@ function initAgora(noRelease){
   if(!AgoraRTC.checkSystemRequirements()){
     toast("Sorry, You Browser Don't Support The Website, Please Change A Browswer.");
     return false;
+  }
+  if(!option.appID || !option.channel || !option.token){
+    toast("Missing parameters");
+    return;
   }
   console.log("initAgora : ", option.uid);
   //1 - Initialize the client
@@ -865,6 +896,10 @@ function releaseLocalStream(noRelease){
   });
 }
 var publishLocalStream = throttle(function(){
+  if(!rtc.localStream) {
+    println("Local Stream not init.");
+    return;
+  }
   rtc.client.publish(rtc.localStream, function (err) {
     console.log("3.2 - publish failed");
     console.error(err);
@@ -1049,6 +1084,10 @@ function sendGift(giftName){
   axios.post(url, dataObj, { headers: getHeaders() }).then(res => {
     if(res.data.msg === "success"){
       toast("Success!","thank your gift.", "", 2000);
+      var msgNode = document.createElement("p");
+      msgNode.setAttribute("class", "send-gift-msg");
+      msgNode.innerText = `You send a ${giftName} gift.`;
+      document.getElementById("conversation-list").appendChild(msgNode);
     }else throw res.data.msg;
   }).catch(error => {
     toast("Failed. ",error, "error", 2000);

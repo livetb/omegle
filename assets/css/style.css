@@ -273,7 +273,7 @@ p.header-text {
   top: 0;
   background-color: #555555;
 }
-#you-container {
+#you-and-stranger > div:nth-child(2) {
   margin: 1rem 0;
 }
 .start-or-cancel {
@@ -367,6 +367,12 @@ input#start-or-next:checked + label + #cancel-next {
   line-height: 1rem;
   font-weight: 500;
 }
+p#server_state {
+  position: sticky;
+  top: 0;
+  box-shadow: 0 0 0px 0.5rem #fff;
+  background-color: #FFF;
+}
 .sending-msg::after {
   content: " - sending...";
   font-size: 0.6rem;
@@ -381,25 +387,33 @@ input#start-or-next:checked + label + #cancel-next {
   color: #000;
 }
 .stranger-msg::before {
-  color: #298FFE;
+  color: #F00;
   content: "Stranger: ";
   font-weight: 700px;
 }
 .gift-msg {
   margin: 0;
-  font-size: 1rem;
-  font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+  font-size: 1rem !;
+  font-family: 'Franklin Gothic Medium', 'Arial Narrow', Arial, sans-serif;
   font-weight: 600;
-  background-color: #F0d;
-  color: #FFF;
+  /* background-color: #F0d; */
+  color: palevioletred;
   line-height: 1.2rem;
-  padding: 0.5rem;
+  /* padding: 0.5rem; */
+}
+.send-gift-msg {
+  margin: 0;
+  font-size: 1rem !;
+  font-family: 'Franklin Gothic Medium', 'Arial Narrow', Arial, sans-serif;
+  font-weight: 600;
+  color: #4285f4;
+  line-height: 1.2rem;
 }
 .you-msg {
   color: #000;
 }
 .you-msg::before {
-  color: #F00;
+  color: #298FFE;
   content: "Me: ";
   font-weight: 700;
 }

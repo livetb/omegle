@@ -16,7 +16,7 @@
       "Title": "Omegle: Talk to strangers!",
       "description": "Omegle is a great place to meet new friends. When you use Omegle, we pick another user at random and let you have a one-on-one chat with each other."
     }
-    </script>
+  </script>
   <!-- firebase -->
   <link type="text/css" rel="stylesheet" href="https://cdn.firebase.com/libs/firebaseui/3.5.2/firebaseui.css" />
   <!-- custom -->
@@ -52,16 +52,17 @@
 <div class="auto-container">
   <main id="main" class="auto-padding">
     <div id="you-and-stranger">
+      
+      <div id="you-container" onclick="fullScreen(this)"> <!-- You -->
+        <div class="only-nologin-show logo-bg">
+          <img src="./assets/img/logo-text.png" />
+        </div>
+     </div>
       <div id="stranger-container" onclick="fullScreen(this)"> <!-- Stranger -->
         <div class="only-nologin-show logo-bg">
           <img src="./assets/img/logo-text.png" />
         </div>
         <div id="wait_stranger" visible-display="flex" class="lds-ring"><div></div><div></div><div></div><div></div></div>
-      </div>
-      <div id="you-container" onclick="fullScreen(this)"> <!-- You -->
-         <div class="only-nologin-show logo-bg">
-           <img src="./assets/img/logo-text.png" />
-         </div>
       </div>
       <!-- Start Or Next  -->
       <div>

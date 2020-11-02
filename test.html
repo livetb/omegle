@@ -1,0 +1,332 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+  <meta charset="utf-8">
+  <meta http-equiv="X-UA-Compatible" content="IE=edge">
+  <meta name="viewport" content="user-scalable=no, initial-scale=1.0, width=device-width, maximum-scale=1.0, minimal-ui">
+  <meta name="description" content="Omegle is a great place to meet new friends. When you use Omegle, we pick another user at random and let you have a one-on-one chat with each other.">
+  <title>Omegle: Talk to strangers!</title>
+  <script type="application/ld+json">
+    {
+      "@context": "https://schema.org",
+      "@type": "HowTo",
+      "name": "How to talk with a stranger.",
+      "description": "Omegle is a great place to meet new friends. When you use Omegle, we pick another user at random and let you have a one-on-one chat with each other.",
+      "tool": "Broswer, Network",
+      "step": [{
+          "@type": "HowToStep",
+          "url": "https://omegle.host",
+          "name": "Login or Signup",
+          "itemListElement": [{
+            "@type": "HowToDirection",
+            "text": "Login or Signup by Google/Fackbook/Email."
+          }, {
+            "@type": "HowToDirection",
+            "text": "Edit your basic Information."
+          }],
+          "image": {
+            "@type": "ImageObject",
+            "url": "https://omegle.host/assets/img/logo-text.png",
+            "height": "400",
+            "width": "200"
+          }
+        }, {
+          "@type": "HowToStep",
+          "url": "https://omegle.host",
+          "name": "Start macth stranger.",
+          "itemListElement": [{
+            "@type": "HowToDirection",
+            "text": "Click <Start> button to match stranger."
+          }, {
+            "@type": "HowToDirection",
+            "text": "Authorize websites to access your camera and microphone."
+          }, {
+            "@type": "HowToDirection",
+            "text": "Click <Next> button to match next stranger."
+          }],
+          "image": {
+            "@type": "ImageObject",
+            "url": "https://omegle.host/assets/img/logo-text.png",
+            "height": "400",
+            "width": "200"
+          }
+        }, {
+          "@type": "HowToStep",
+          "url": "https://omegle.host",
+          "name": "Over.",
+          "itemListElement": [{
+            "@type": "HowToDirection",
+            "text": "Ok, Now you can start chatting with strangers."
+          },{
+            "@type": "HowToDirection",
+            "text": "You can send some gifts to the other person and she will thank you."
+          }],
+          "image": {
+            "@type": "ImageObject",
+            "url": "https://omegle.host/assets/img/logo-text.png",
+            "height": "400",
+            "width": "200"
+          }
+        }
+      ]
+    }
+  </script>
+  <!-- firebase -->
+  <link type="text/css" rel="stylesheet" href="https://cdn.firebase.com/libs/firebaseui/3.5.2/firebaseui.css" />
+  <!-- custom -->
+  <link rel="stylesheet" href="./assets/css/style.css" />
+</head>
+
+<body>
+<div class="auto-container">
+  <header id="header" class="auto-padding">
+    <div class="header-left">
+      <div class="logo">
+        <img class="logo-icon" src="./assets/img/logo-icon.png" />
+        <img src="./assets/img/logo-text.png" />
+      </div>
+      <img class="talk-to-strangers" src="./assets/img/Talk to strangers!.png" />
+    </div>
+    <!--  -->
+    <div class="header-right">
+      <div class="login-and-signup">
+        <div id="login_btn" onclick="showLogin()" class="login-btn only-nologin-show">Login</div>
+        <div id="signup_btn" onclick="showLogin()" class="signup-btn only-nologin-show">Sign up</div>
+        <div id="logout_btn" onclick="logout()" class="logout-btn only-login-show">Logout</div>
+      </div>
+      <span class="online-now">33100+</span>
+    </div>
+  </header>
+</div>
+<div class="auto-container">
+  <div class="auto-padding header-text">
+    <p class="header-text">The Internet is full of cool people; Omegle lets you meet them. When you use Omegle, we pick someone else at random so you can have a one-on-one chat.</p>
+  </div>
+</div>
+<div class="auto-container">
+  <main id="main" class="auto-padding">
+    <div id="you-and-stranger">
+      
+      <div id="you-container" ondblclick="fullScreen(this)"> <!-- You -->
+        <div class="only-nologin-show logo-bg">
+          <img src="./assets/img/logo-text.png" />
+        </div>
+     </div>
+      <div id="stranger-container" ondblclick="fullScreen(this)"> <!-- Stranger -->
+        <div class="only-nologin-show logo-bg">
+          <img src="./assets/img/logo-text.png" />
+        </div>
+        <div id="wait_stranger" visible-display="flex" class="lds-ring"><div></div><div></div><div></div><div></div></div>
+      </div>
+      <!-- Start Or Next  -->
+      <div>
+        <div class="start-or-cancel">
+          <input type="checkbox" id="start-or-next" />
+          <label for="start-or-next"></label>
+          <span id="cancel-next">Cancel</span>
+        </div>
+      </div>
+    </div>
+    <!-- message and gift -->
+    <div id="chat-container">
+      <div id="conversation-list">
+        <p id="server_state">No login.</p>
+      </div>
+      <div id="conversation-bar">
+        <textarea id="you-input" class="only-matched-use hide-scroll-bar cus-disabled" disabled></textarea>
+        <div id="send-msg" class="only-matched-use cus-disabled" disabled>
+          <span>Send</span>
+          <span class="key-enter">Enter</span>
+        </div>
+        <div id="gift" class="only-matched-show" visible-display="inline-block">
+          <img src="./assets/img/gift.png" />
+        </div>
+      </div>
+    </div>
+  </main>
+</div>
+
+<div class="auto-container">
+  <div class="auto-padding footer">
+    <article class="footer-text">By using the Omegle Web site, and/or related products and/or services , you agree to the following terms:  If you are under 18, don’t use Omegle. Do not transmit nudity, sexually harass anyone, publicize other peoples' private information, make statements that defame or libel anyone, violate intellectual property rights, use automated programs to start chats, or behave in any other inappropriate or illegal way on Omegle. Understand that human behavior is fundamentally uncontrollable, that the people you encounter on Omegle may not behave appropriately, and that they are solely responsible for their own behavior. Use Omegle at your own peril. Disconnect if anyone makes you feel uncomfortable. You may be denied access to Omegle for inappropriate behavior, or for any other reason. OMEGLE IS PROVIDED AS IS, AND TO THE MAXIMUM EXTENT ALLOWED BY APPLICABLE LAW, IT IS PROVIDED WITHOUT ANY WARRANTY, EXPRESS OR IMPLIED, NOT EVEN A WARRANTY OF MERCHANTABILITY OR FITNESS FOR A PARTICULAR PURPOSE. TO THE MAXIMUM EXTENT ALLOWED BY APPLICABLE LAW, THE PROVIDER OF OMEGLE, AND ANY OTHER PERSON OR ENTITY ASSOCIATED WITH OMEGLE'S OPERATION, SHALL NOT BE HELD LIABLE FOR ANY DIRECT OR INDIRECT DAMAGES ARISING FROM THE USE OF OMEGLE, OR ANY OTHER DAMAGES RELATED TO OMEGLE OF ANY KIND WHATSOEVER. By using Omegle, you accept the practices outlined in Omegle's PRIVACY POLICY and INFORMATION ABOUT THE USE OF COOKIES.
+
+
+* Omegle video chat is moderated. However, moderation is not perfect. You may still encounter people who misbehave. They are solely responsible for their own behavior.
+    </article>
+  </div>
+</div>
+
+<!-- Login -->
+<div id="login_modal" class="modal">
+  <div id="login_dialog" class="dialog login-dialog">
+    <div class="dialog-header">
+      <div style="text-align: right;">
+        <div class="dialog-close" onclick="hideLogin()">
+          <svg t="1604286277225" class="icon" viewBox="0 0 1024 1024" version="1.1" xmlns="http://www.w3.org/2000/svg" p-id="3054" width="15" height="15"><path d="M521.694 449.297L111.41 39.014a51.2 51.2 0 1 0-72.43 72.363l410.282 410.317L38.98 932.01a51.2 51.2 0 1 0 72.397 72.396l410.317-410.282 410.317 410.282a51.2 51.2 0 1 0 72.396-72.362L594.125 521.694l410.282-410.283a51.2 51.2 0 1 0-72.396-72.397L521.728 449.297z" p-id="3055" fill="#000000"></path></svg>
+        </div>
+      </div>
+      <h2 class="dialog-title">Welcome back.</h2>
+    </div>
+    <div class="dialog-body">
+      <div id="tokenLoader" class="dialog-loader">
+        <div class="dot-loader" ></div>
+        <span>Loading...</span>
+      </div>
+      <div id="firebaseui-auth-container"></div>
+      <div id="loader" class="dialog-loader">
+        <div class="dot-loader" ></div>
+        <span>Loading...</span>
+      </div>
+    </div>
+  </div>
+</div>
+<!-- Gift -->
+<div id="gift_modal" class="modal">
+  <div id="gift_dialog" class="dialog gift-dialog">
+    <p>Show your love by sending gifts!🎁</p>
+    <div class="gifts-list">
+      <div id="gift_10" class="gift-item" alt="Lollipop">
+        <!-- <img class="gift-icon" src="./assets/img/gift-1.png" /> -->
+        <div class="gift-icon sprite-gift gift-1"></div>
+        <span class="gift-price">10</span>
+      </div>
+      <div id="gift_50" class="gift-item" alt="Rose">
+        <!-- <img class="gift-icon" src="./assets/img/gift-2.png" /> -->
+        <div class="gift-icon sprite-gift gift-2"></div>
+        <span class="gift-price">50</span>
+      </div>
+      <div id="gift_300" class="gift-item" alt="Flowers">
+        <!-- <img class="gift-icon" src="./assets/img/gift-3.png" /> -->
+        <div class="gift-icon sprite-gift gift-3"></div>
+        <span class="gift-price">300</span>
+      </div>
+      <div id="gift_1000" class="gift-item" alt="Rocket">
+        <!-- <img class="gift-icon" src="./assets/img/gift-4.png" /> -->
+        <div class="gift-icon sprite-gift gift-4"></div>
+        <span class="gift-price">1000</span>
+      </div>
+    </div>
+  </div>
+  <span id="no_thanks" class="no-thanks" onclick="hideModal(this)">no, thanks</span>
+</div>
+<!-- Payment List -->
+<div id="payment_modal" class="modal">
+  <div id="payment_dialog" class="dialog payment-dialog">
+    <h2>Choose payment method:</h2>
+    <div id="payment-list">
+      <div onclick="choosePayment('stripe')" class="payment-item">
+        <svg t="1603360670201" class="icon" viewBox="0 0 1024 1024" version="1.1" xmlns="http://www.w3.org/2000/svg" p-id="3051" width="20" height="20"><path d="M596.32 390.4c-92.672-34.4-143.2-60.832-143.2-102.784 0-35.456 29.152-55.68 81.12-55.68 95.008 0 192.64 36.608 259.84 69.6l37.984-234.4C778.784 41.632 669.76 0.032 519.072 0.032c-106.592 0-195.232 27.904-258.592 79.872-65.888 54.4-100.128 133.12-100.128 228.096 0 172.32 105.248 245.76 276.32 308 110.304 39.264 146.976 67.168 146.976 110.208 0 41.824-35.84 65.92-100.448 65.92-80 0-211.84-39.296-298.24-89.984l-38.4 237.024c74.272 41.76 211.232 84.864 353.28 84.864 112.672 0 206.624-26.624 269.984-77.344 71.008-55.68 107.744-138.08 107.744-244.576 0-176.128-107.68-249.632-281.344-311.68z" fill="#635BFF" p-id="3052"></path></svg>
+        <span class="payment-name">Stripe</span>
+      </div>
+      <div onclick="choosePayment('paypal')" class="payment-item">
+        <svg t="1603360733183" class="icon" viewBox="0 0 1024 1024" version="1.1" xmlns="http://www.w3.org/2000/svg" p-id="4068" width="20" height="20"><path d="M433.28 241.024h288.853333c155.093333 0 213.461333 78.506667 204.458667 193.962667-14.848 190.464-130.005333 295.765333-282.709333 295.765333h-77.098667c-20.906667 0-35.029333 13.824-40.746667 51.413333l-33.024 218.325334c-2.176 14.165333-9.642667 22.485333-20.821333 23.509333H291.072c-17.066667 0-23.125333-13.013333-18.688-41.301333L383.018667 282.453333c4.437333-28.117333 19.797333-41.429333 50.261333-41.429333z" fill="#009DE2" p-id="4069"></path><path d="M252.714667 0H541.866667c81.450667 0 178.048 2.645333 242.645333 59.648 43.136 38.058667 65.792 98.688 60.586667 163.84-17.792 220.714667-149.845333 344.405333-326.912 344.405333H375.552c-24.234667 0-40.362667 16.085333-47.189333 59.605334l-39.808 253.141333c-2.56 16.469333-9.685333 26.154667-22.698667 27.306667H87.765333c-19.754667 0-26.794667-15.146667-21.589333-47.872L194.432 48.042667C199.552 15.488 217.344 0 252.714667 0z" fill="#113984" p-id="4070"></path><path d="M332.544 602.026667l50.474667-319.573334c4.437333-28.117333 19.797333-41.429333 50.261333-41.429333h288.853333c47.786667 0 86.442667 7.466667 116.693334 21.205333-29.013333 196.48-156.074667 305.664-322.517334 305.664H373.76c-18.773333 0-32.768 9.6-41.216 34.133334z" fill="#172C70" p-id="4071"></path></svg>
+        <span class="payment-name">PayPal</span>
+      </div>
+    </div>
+  </div>
+  <span class="no-thanks" onclick="hideModal(this)">no, thanks</span>
+</div>
+<!-- Recharge -->
+<div id="recharge_modal" class="modal">
+  <div id="recharge_dialog" class="dialog recharge-dialog">
+    <h2>Get Diamonds to Continue
+      Chatting with your Love</h2>
+    <div id="recharge_list" class="recharge-list">
+      <div class="lds-ring"><div></div><div></div><div></div><div></div></div>
+    </div>
+  </div>
+  <span class="no-thanks" onclick="hideModal(this)">no, thanks</span>
+</div>
+<!-- Stripe -->
+<div id="stripe_modal" class="modal recharge-modal">
+  <div class="diamond-and-money">
+    <p class="diamond-amount">510</p>
+    <p class="pay-money">9.99</p>
+  </div>
+  <div id="stripe_dialog" class="dialog stripe-dialog">
+    <form id="payment-form">
+      <div id="card-element"><!--Stripe.js injects the Card Element--></div>
+      <button id="submit">
+        <div class="spinner hidden" id="spinner"></div>
+        <span id="button-text">Pay</span>
+      </button>
+      <p id="card-error" role="alert"></p>
+      <p class="result-message hidden">
+        Payment succeeded, see the result in your
+        <a href="" target="_blank">Stripe dashboard.</a> Refresh the page to pay again.
+      </p>
+    </form>
+  </div>
+  <span class="no-thanks" onclick="hideModal(this)">no, thanks</span>
+</div>
+<!-- Popup -->
+<div id="popup" visible-display="flex" class="popup-modal">
+  <div class="popup-page" id="test-popup">
+    <div class="popup-header">
+      <span class="close-popup" onclick="hidePopup('test-popup')">Cancel</span>
+    </div>
+    <h1>Hello World.</h1>
+  </div>
+  <!-- base info -->
+  <div class="popup-page" id="edit_baseinfo_popup" visible-display="flex">
+    <!-- <div class="popup-header">
+      <span class="close-popup" onclick="hidePopup('edit_baseinfo_popup')">Cancel</span>
+    </div> -->
+    <div class="popup-content">
+      <div class="cover">
+        <label>
+          <input type="file" id="cover" />
+          <img id="cover_show" src="./assets/img/logo-icon.png" />
+        </label>
+        <span class="tips-upfile">*please upload a profile photo</span>
+      </div>
+      <!-- nickname -->
+      <div class="nickname">
+        <h2>Nickname</h2>
+        <input type="text" id="nickname" maxlength="20"/>
+      </div>
+      <!-- age -->
+      <!-- <div class="age">
+        <h2>How old are you?</h2>
+        <input type="number" id="age" max="999" maxlength="3" value="18"/>
+      </div> -->
+    </div>
+    <!-- Next -->
+    <span id="save_baseinfo">Next</span>
+  </div>
+</div>
+<!-- Toast -->
+<div id="toast_list" class="toast-list">
+  
+</div>
+<!-- recharge success -->
+<div class="">
+
+</div>
+<!-- firebase -->
+
+<script src="https://www.gstatic.com/firebasejs/6.2.0/firebase.js"></script>
+<script src="https://cdn.firebase.com/libs/firebaseui/3.5.2/firebaseui.js"></script>
+
+<script src="https://www.googletagmanager.com/gtag/js?id=G-KQ6P6Z7G76"></script>
+<script>
+  window.dataLayer = window.dataLayer || [];
+  function gtag(){dataLayer.push(arguments);}
+  gtag('js', new Date());
+
+  gtag('config', 'G-CTKM4FYHZY');
+</script>
+<!-- axios -->
+<script src="https://cdn.jsdelivr.net/npm/axios/dist/axios.min.js"></script>
+<!-- Stripe -->
+<script src="https://js.stripe.com/v3/"></script>
+<script src="https://polyfill.io/v3/polyfill.min.js?version=3.52.1&features=fetch"></script>
+<!-- Agora -->
+<script src="https://cdn.agora.io/sdk/release/AgoraRTCSDK-3.2.1.js"></script>
+<!-- md5 -->
+<script src="./assets/js/md5.js" ></script>
+<!-- custom -->
+<script src="./assets/js/index.js"></script>
+</body>
+</html>

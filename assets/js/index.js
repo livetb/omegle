@@ -507,6 +507,7 @@ function strangerAnswerCall(obj){
  * 5.You Hnag Up.
  */
 function youHangup(callFun){
+  println("You Hangup.",null, "error");
   if(!getStrangerUid()) return;
   var url = `https://${config.domain}/api3/video/close`;
   var dataObj = {
@@ -527,6 +528,15 @@ function youHangup(callFun){
  * 6.Server Forward Hang Up To Other Side.
  */
 var strangerHangupYou = throttle(function(obj){
+  println("Receive CC from Server.", obj, "error");
+  if(obj.temp === "ccPay"){
+    queryDiamond(Object => {
+      if(Object.success && Object.diamond < 100){
+        toast("The balance is insufficient, please recharge", null, "error", 5000);
+        showRechargeList();
+      }
+    });
+  }
   println("6.Server Forward Hang Up To Other Side.",obj.chatNo);
   if(obj.chatNo === config.chatNo) {
     youHangup();
@@ -672,7 +682,7 @@ var changeStranger = (function(){
     if(isMatched === oldMatched){
       println("Match state no change.");
     }else{
-      rtc.client = AgoraRTC.createClient({mode: "rtc", codec: "vp8"});
+      rtc.client = AgoraRTC.createClient({mode: "rtc", codec: "h264"});
       println("Match state already changed.");
       var serverState = views.conversationList.firstElementChild;
       serverState.innerText = isMatched ? "Already matched stranger." : "No match stranger.";
@@ -890,7 +900,7 @@ function releaseLocalStream(noRelease){
   // rtc.localStream.setScreenProfile("480p_2");
   // rtc.localStream.setVideoProfile("360p");
   // videoProfile_default: 480p
-  rtc.localStream.setVideoProfile("240p");
+  // rtc.localStream.setVideoProfile("240p_3");
   rtc.localStream.init(function () {
     console.log("3 - init local stream success");
     //3.1 - play stream with html element id "local_stream"
@@ -906,6 +916,11 @@ function releaseLocalStream(noRelease){
       println(err.info, err.msg, "error");
     }else println("Video Chat Error");
   });
+  
+  // rtc.localStream.on("videoTrackEnded", function(evt){
+  //   toast("VideoTractEnd", evt, null, 10 * 1000);
+  //   releaseLocalStream();
+  // });
 }
 var publishLocalStream = throttle(function(){
   if(!rtc.localStream) {
@@ -1008,6 +1023,12 @@ function addStreamListener(){
   });
   rtc.client.off("stream-published", publishedListener);
   rtc.client.on("stream-published", publishedListener);
+
+  // var onVideoTrackEnd = function(evt){
+  //   toast("Video Track End.", evt, "warn", 10*1000);
+  // };
+  // rtc.client.off("videoTrackEnded", onVideoTrackEnd);
+  // rtc.client.on("videoTrackEnded", onVideoTrackEnd);
 }
 /**
  * 
@@ -1195,7 +1216,7 @@ function rechargeSuccess(result){
       if(obj.success) toast("Success Recharge.", `You balance is : ${obj.diamond} diamond`, "success", 3000);
       else toast("Query balance error!", "Plase try again or refresh the page.", "error", 3000);
     });
-  }, 500);
+  }, 1000);
 }
 function rechargeFailed(obj){
   toast("Recharge Failed.", obj);

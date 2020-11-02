@@ -9,12 +9,67 @@
   <title>Omegle: Talk to strangers!</title>
   <script type="application/ld+json">
     {
-      "@context": "http://schema.org",
-      "@type": "Talk",
-      "url": "https://omegle.host",
-      "logo": "https://omegle.host/assets/img/logo-icon.png",
-      "Title": "Omegle: Talk to strangers!",
-      "description": "Omegle is a great place to meet new friends. When you use Omegle, we pick another user at random and let you have a one-on-one chat with each other."
+      "@context": "https://schema.org",
+      "@type": "HowTo",
+      "name": "How to talk with a stranger.",
+      "description": "Omegle is a great place to meet new friends. When you use Omegle, we pick another user at random and let you have a one-on-one chat with each other.",
+      "tool": "Broswer, Network",
+      "step": [{
+          "@type": "HowToStep",
+          "url": "https://omegle.host",
+          "name": "Login or Signup",
+          "itemListElement": [{
+            "@type": "HowToDirection",
+            "text": "Login or Signup by Google/Fackbook/Email."
+          }, {
+            "@type": "HowToDirection",
+            "text": "Edit your basic Information."
+          }],
+          "image": {
+            "@type": "ImageObject",
+            "url": "https://omegle.host/assets/img/logo-text.png",
+            "height": "400",
+            "width": "200"
+          }
+        }, {
+          "@type": "HowToStep",
+          "url": "https://omegle.host",
+          "name": "Start macth stranger.",
+          "itemListElement": [{
+            "@type": "HowToDirection",
+            "text": "Click <Start> button to match stranger."
+          }, {
+            "@type": "HowToDirection",
+            "text": "Authorize websites to access your camera and microphone."
+          }, {
+            "@type": "HowToDirection",
+            "text": "Click <Next> button to match next stranger."
+          }],
+          "image": {
+            "@type": "ImageObject",
+            "url": "https://omegle.host/assets/img/logo-text.png",
+            "height": "400",
+            "width": "200"
+          }
+        }, {
+          "@type": "HowToStep",
+          "url": "https://omegle.host",
+          "name": "Over.",
+          "itemListElement": [{
+            "@type": "HowToDirection",
+            "text": "Ok, Now you can start chatting with strangers."
+          },{
+            "@type": "HowToDirection",
+            "text": "You can send some gifts to the other person and she will thank you."
+          }],
+          "image": {
+            "@type": "ImageObject",
+            "url": "https://omegle.host/assets/img/logo-text.png",
+            "height": "400",
+            "width": "200"
+          }
+        }
+      ]
     }
   </script>
   <!-- firebase -->
@@ -106,7 +161,11 @@
 <div id="login_modal" class="modal">
   <div id="login_dialog" class="dialog login-dialog">
     <div class="dialog-header">
-      <div style="text-align: right;"><img class="dialog-close" onclick="hideLogin()" src="./assets/img/close.png"/></div>
+      <div style="text-align: right;">
+        <div class="dialog-close" onclick="hideLogin()">
+          <svg t="1604286277225" class="icon" viewBox="0 0 1024 1024" version="1.1" xmlns="http://www.w3.org/2000/svg" p-id="3054" width="15" height="15"><path d="M521.694 449.297L111.41 39.014a51.2 51.2 0 1 0-72.43 72.363l410.282 410.317L38.98 932.01a51.2 51.2 0 1 0 72.397 72.396l410.317-410.282 410.317 410.282a51.2 51.2 0 1 0 72.396-72.362L594.125 521.694l410.282-410.283a51.2 51.2 0 1 0-72.396-72.397L521.728 449.297z" p-id="3055" fill="#000000"></path></svg>
+        </div>
+      </div>
       <h2 class="dialog-title">Welcome back.</h2>
     </div>
     <div class="dialog-body">
@@ -128,19 +187,23 @@
     <p>Show your love by sending gifts!🎁</p>
     <div class="gifts-list">
       <div id="gift_10" class="gift-item" alt="Lollipop">
-        <img class="gift-icon" src="./assets/img/gift-1.png" />
+        <!-- <img class="gift-icon" src="./assets/img/gift-1.png" /> -->
+        <div class="gift-icon sprite-gift gift-1"></div>
         <span class="gift-price">10</span>
       </div>
       <div id="gift_50" class="gift-item" alt="Rose">
-        <img class="gift-icon" src="./assets/img/gift-2.png" />
+        <!-- <img class="gift-icon" src="./assets/img/gift-2.png" /> -->
+        <div class="gift-icon sprite-gift gift-2"></div>
         <span class="gift-price">50</span>
       </div>
       <div id="gift_300" class="gift-item" alt="Flowers">
-        <img class="gift-icon" src="./assets/img/gift-3.png" />
+        <!-- <img class="gift-icon" src="./assets/img/gift-3.png" /> -->
+        <div class="gift-icon sprite-gift gift-3"></div>
         <span class="gift-price">300</span>
       </div>
       <div id="gift_1000" class="gift-item" alt="Rocket">
-        <img class="gift-icon" src="./assets/img/gift-4.png" />
+        <!-- <img class="gift-icon" src="./assets/img/gift-4.png" /> -->
+        <div class="gift-icon sprite-gift gift-4"></div>
         <span class="gift-price">1000</span>
       </div>
     </div>
@@ -221,7 +284,7 @@
       <!-- nickname -->
       <div class="nickname">
         <h2>Nickname</h2>
-        <input type="text" id="nickname" />
+        <input type="text" id="nickname" maxlength="20"/>
       </div>
       <!-- age -->
       <!-- <div class="age">

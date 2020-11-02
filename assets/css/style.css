@@ -503,6 +503,7 @@ p#server_state {
 }
 /* ------------------------------------ Modal & Dialog ------------------------------------ */
 .dialog-close {
+  display: inline;
   width: 15px;
   height: 15px;
   position: relative;
@@ -694,6 +695,11 @@ p#server_state {
   display: none;
 }
 /* ------------------------------------ Gift ------------------------------------ */
+.sprite-gift { background: url(../img/gift-sprite.png) no-repeat top left; width: 70px; height: 70px;  } 
+.sprite-gift.gift-1 { background-position: 0 0; } 
+.sprite-gift.gift-2 { background-position: 0 -80px; } 
+.sprite-gift.gift-3 { background-position: 0 -160px; width: 69px; height: 69px; } 
+.sprite-gift.gift-4 { background-position: 0 -239px; } 
 #gift_modal {
   z-index: 1050;
 }
@@ -713,8 +719,8 @@ p#server_state {
 }
 .gifts-list {
   display: grid;
-  grid-template-columns: repeat(4, 3rem);
-  grid-template-rows: 4.5rem;
+  grid-template-columns: repeat(4, 3.5rem);
+  grid-template-rows: 5rem;
   column-gap: 1rem;
 }
 .gift-item {
@@ -724,8 +730,8 @@ p#server_state {
   cursor: pointer;
 }
 .gift-icon {
-  width: 3rem;
-  height: 3rem;
+  width: 3.5rem;
+  height: 3.5rem;
 }
 .gift-price {
   font-size: 0.6rem;
@@ -800,6 +806,14 @@ p#server_state {
   left: 1.5rem;
 }
 /* ------------------------------------ Recharge ------------------------------------ */
+.sprite { background: url(../img/diamond-sprite.png) no-repeat top left; width: 36px; height: 19px;  } 
+.sprite.diamond-1 { background-position: 0 0; width: 18px; height: 17px; } 
+.sprite.diamond-2 { background-position: 0 -27px; width: 22px; } 
+.sprite.diamond-3 { background-position: 0 -56px; width: 30px; height: 21px; } 
+.sprite.diamond-4 { background-position: 0 -87px; } 
+.sprite.diamond-5 { background-position: 0 -116px; height: 22px; } 
+.sprite.diamond-6 { background-position: 0 -148px; width: 48px; height: 21px; } 
+
 #recharge_modal {
   z-index: 1100;
 }

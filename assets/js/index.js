@@ -2,13 +2,6 @@
 function StorageHelper(app){
   this.app = app;
 }
-StorageHelper.prototype.removeItems = function(){
-  console.log(arguments);
-  for(var i in arguments){
-    var key = this.app + "_" + arguments[i];
-    localStorage.removeItem(key);
-  }
-}
 StorageHelper.prototype.setItem = function(key, value){
   key = this.app + "_" + key;
   localStorage.setItem(key, value);
@@ -16,6 +9,18 @@ StorageHelper.prototype.setItem = function(key, value){
 StorageHelper.prototype.getItem = function(key){
   key = key = this.app + "_" + key;
   return localStorage.getItem(key);
+}
+StorageHelper.prototype.removeItems = function(){
+  console.log(arguments);
+  for(var i in arguments){
+    var key = this.app + "_" + arguments[i];
+    localStorage.removeItem(key);
+  }
+}
+StorageHelper.prototype.clear = function(){
+  for(var key in localStorage){
+    if(key.match(this.app)) localStorage.removeItem(key);
+  }
 }
 const storageHelper = new StorageHelper("Omegle");
 function showView(ele, displayName){
@@ -90,7 +95,6 @@ function getHeaders(){
   }
 }
 /**
- * 
  * @param {String} msg - Error Message
  * @param {Interger} status - Default 0: println-error, 1: println-warning
  */
@@ -202,31 +206,31 @@ var uiConfig = {
 /**
  * 
  */
-function initView(user){
-  console.log("InitView => ", user);
+function initView(isLogin){
+  console.log("InitView => ", isLogin);
   var onlyLoginShow = document.querySelectorAll(".only-login-show");
   var onlyNologinShow = document.querySelectorAll(".only-nologin-show");
   console.log("Only login show => ", onlyLoginShow.length);
-  for(var i=0; i<onlyLoginShow.length; i++) onlyLoginShow[i].style.display = user ? "inline-block" : "none";
+  for(var i=0; i<onlyLoginShow.length; i++) onlyLoginShow[i].style.display = isLogin ? "inline-block" : "none";
   console.log("Only nologin show => ", onlyNologinShow.length);
-  for(var j=0; j<onlyNologinShow.length; j++) onlyNologinShow[j].style.display = user ? "none" : "inline-block";
+  for(var j=0; j<onlyNologinShow.length; j++) onlyNologinShow[j].style.display = isLogin ? "none" : "inline-block";
   var mode = getQueryVariable("mode");
-  if(mode === "select" && !user) showLogin();
-  if(user){
-    views.youContainer.style.backgroundImage = `url(${storageHelper.getItem("avatar") || user.photoURL})`;
+  if(mode === "select" && !isLogin) showLogin();
+  if(isLogin){
+    views.youContainer.style.backgroundImage = `url(${storageHelper.getItem("avatar") || config.user.photoURL})`;
   }
 }
 /**
  * Check Login Or No.
  */
 firebase.auth().onAuthStateChanged(function (user) {
-  initView(user);
   var uid = storageHelper.getItem("uid");
+  initView(user && uid);
   if (user && uid) {
     config.user = user;
     connectSocket(); // Connect Our Socket Server.
   } else {
-    // showLogin()
+    showLogin()
   }
 });
 /**
@@ -258,6 +262,7 @@ function login(successTips, failedTips){
       storageHelper.setItem("uid", data.data.user.uid);
       storageHelper.setItem("id", data.data.user.id);
       storageHelper.setItem("avatar", data.data.user.avatar);
+      storageHelper.setItem("nickname",data.data.user.nickname);
       if(!data.data.user.avatar) {
         showBaseinfoPopup();
       }
@@ -281,9 +286,9 @@ function logout(){
   console.log("Firebase : Logout!");
   firebase.auth().signOut().then(function() {
     if(window.socket) window.socket.close();
-    storageHelper.removeItems("uid", "token", "id");
+    storageHelper.clear();
     console.log("Firebase : Logout Success!");
-    window.location.href = "index.html";
+    window.location.reload(); 
   }).catch(function(error) {
     console.log("Firebase : Logout Error => ", error);
   });
@@ -321,7 +326,7 @@ var config = {
   userRole: "audience",
   videoScale: 0.7,
   heartbeat: 0, 
-  domain: "t.livehub.cloud", //"t.livego.live" , "vfun.mixit.fun"
+  domain: "t.livehub.cloud", //"t.livego.live" , "vfun.mixit.fun", "t.livehub.cloud"
   strangerUid: null,
   coverMaxSize: 2 * 1024 * 1024, //2m
   giftList: {
@@ -329,7 +334,9 @@ var config = {
     rose: 50,
     flowers: 300,
     rocket: 1000
-  }
+  },
+  rechargeList: null,
+  rechargeItem: null
 }
 function getDomain(){
   
@@ -419,12 +426,6 @@ function onSendMsgListener(){
 }
 onSendMsgListener();
 /* ------------------------------------ Call ------------------------------------ */
-function call20SCheck(){
-  setTimeout(() => {
-
-  }, 20 * 1000);
-}
-
 /**
  * 1.User Start Video Call, Only Excute Once In {config.allIntervalTime} seconds.
  */
@@ -471,7 +472,7 @@ function videoCallYou(obj){
   initAgoraOption(obj);
   setStrangerUid(obj.remoteUid);
   // initAgora();
-  config.userRole = "host";
+  config.userRole = "host"; 
   println("2.Server Forward User Call to Host.");
 }
 /**
@@ -532,7 +533,7 @@ var strangerHangupYou = throttle(function(obj){
     println("ChatNo Is Same, Hang Up The Call.");
   }else if(!config.chatNo && config.inMatch){
     youHangup();
-    toast("The other did not answer for a long time，Restart Matching.");
+    toast("The other did not answer for a long time，Please try again.");
     // getRandomStranger();
   }
 }, config.allIntervalTime, function(){
@@ -607,7 +608,8 @@ function connectSocket(){
   views.serverState.innerText = "Connecting to server...";
 
   // Create WebSocket connection.
-  window.socket = new WebSocket(`wss://${config.domain}/ws?mid=testABC&timestamp=${Date.now()}&uid=${getYouUid()}&sign=1111`);
+  window.socket = new WebSocket(`wss://${config.domain}/ws?token=${storageHelper.getItem("token")}`);
+  //mid=testABC&timestamp=${Date.now()}&uid=${getYouUid()}&sign=1111
 
   // Connection opened
   socket.addEventListener('open', function (event) {
@@ -630,7 +632,7 @@ function connectSocket(){
         case "SC": videoCallYou(obj); break;
         case "HB": config.heartbeat++; if(config.headers % 10 === 1) console.log("Heartbeat : ", config.heartbeat); break;
         case "AC": strangerAnswerCall(obj); break;
-        case "CC": strangerHangupYou(obj); console.warn(obj); break;
+        case "CC": strangerHangupYou(obj); break;
         default: console.log(obj); break;
       }
   });
@@ -676,6 +678,8 @@ var changeStranger = (function(){
       views.conversationList.innerHTML = "";
       views.conversationList.appendChild(serverState);
       disabledOnlyMatchedView(isMatched);
+      showView(views.waitStranger, "none");
+      config.inMatch = false;
     }
     oldMatched = isMatched;
   }
@@ -740,7 +744,7 @@ var getRandomStranger = throttle(function(){
   }).catch(error => {
     setStrangerUid(null);
     console.error(error);
-    println("getRandomStrangerError: "+error);
+    toast("System error, please try again later",null, "warn", 3000);
   });
 }, config.allIntervalTime, function(seconds){
   toast(`Only match once in ${seconds} seconds.`, "Please try again later", "warn", 3000);
@@ -777,7 +781,7 @@ function addChatListener(){
     }else {
       toast("Really Next?","Clcik <Really?> Button to Match Next Stranger.", "warn", 6000);
     }
-  }, config.allIntervalTime, function(seconds){
+  }, 0.01, function(seconds){
     views.startOrNext.checked = false;
     toast(`Only match once in ${seconds} seconds.`, "Please try again later", "warn", 3000);
   });
@@ -851,13 +855,13 @@ function initAgora(noRelease){
       rtc.params.uid = uid;
       releaseLocalStream(noRelease);
     }, function(err) {
-      showView(views.waitStranger, "none");
-      config.inMatch = false;
+      setStrangerUid(null);
       toast("System error, Please Refresh the page.",null,"error",5000);
       console.error("2 - client join failed", err)
     });
     }, (err) => {
-    showView(views.waitStranger, "none");
+    setStrangerUid(null);
+    toast("System error, Please Refresh the page.",null,"error",5000);
     console.error("1 - ", err);
   });
   addStreamListener();
@@ -912,7 +916,7 @@ var publishLocalStream = throttle(function(){
 function unPublishLocalStream(){
   println("Unpublish localstream.",null, null, 5 * 1000);
   rtc.client.unpublish(rtc.localStream, function(err){
-    println("Unpublish localstream - Failed.", err, "warn", 5 * 1000);
+    println("Unpublish localstream - Failed.", err, "warn");
   });
   config.inPublishLocalStream = false;
 }
@@ -992,14 +996,6 @@ function addStreamListener(){
 function leaveChannel(unPublish){
   setStrangerUid(null);
   if(!rtc.client) return;
-  if(unPublish) {
-    unPublishLocalStream();
-    var strangerVideo = document.querySelector("#stranger-container > div:last-child");
-    if(strangerVideo && strangerVideo.id.match("player")) {
-      println("Remove StrangerStream : ", strangerVideo.id, "warn", 10 * 1000);
-      strangerVideo.remove();
-    }
-  }
   rtc.client.leave(function () {
     // Stop playing the local stream
     if(!rtc.localStream) return;
@@ -1009,6 +1005,14 @@ function leaveChannel(unPublish){
     // Stop playing the remote streams and remove the views
     var youVideo = document.querySelector("#you-container > div:last-child");
     if(youVideo.id.match("player")) youVideo.remove();
+    if(unPublish) {
+      unPublishLocalStream();
+      var strangerVideo = document.querySelector("#stranger-container > div:last-child");
+      if(strangerVideo && strangerVideo.id.match("player")) {
+        println("Remove StrangerStream : ", strangerVideo.id, "warn");
+        strangerVideo.remove();
+      }
+    }
     console.log("client leaves channel success");
   }, function (err) {
     console.log("channel leave failed");
@@ -1107,6 +1111,7 @@ function initRechargeList(){
       console.log(res.data);
       rechargeArr = res.data.data;
       renderRechargeList(res.data.data);
+      config.rechargeList = res.data.data;
     }else throw res.data.msg;
   }).catch(error => {
     println(error);
@@ -1120,31 +1125,33 @@ function renderRechargeList(arr){
   for(var i=0; i<4; i++){
     var cur = arr[i];
     var curNode = document.createElement("div");
-    curNode.setAttribute("alt", cur.productIosId);
+    curNode.setAttribute("alt", i+"");
     curNode.setAttribute("class", `recharge-item${i===2 ? " hot" : ""}`);
-    curNode.innerHTML = `<div class="recharge-diamond"><div class="diamond-container"><img class="cus-icon" src="${iconList[i%6]}"/></div><span class="diamond-number">${cur.diamond}</span></div><span class="recharge-money">${cur.money}</span>`;
+    // curNode.innerHTML = `<div class="recharge-diamond"><div class="diamond-container"><img class="cus-icon" src="${iconList[i%6]}"/></div><span class="diamond-number">${cur.diamond}</span></div><span class="recharge-money">${cur.money}</span>`;
+    curNode.innerHTML = `<div class="recharge-diamond"><div class="diamond-container"><span class="cus-icon sprite diamond-${i+1}"></span></div><span class="diamond-number">${cur.diamond}</span></div><span class="recharge-money">${cur.money}</span>`;
     rechargeList.appendChild(curNode);
     curNode.addEventListener("click", function(){
       showPaymentList(this.getAttribute("alt"));
     });
   }
 }
-function showPaymentList(productIosId){
+function showPaymentList(index){
   showModal("payment_modal");
-  config.productIosId = productIosId;
+  config.rechargeItem = config.rechargeList[+index];
+  config.productIosId = config.rechargeItem.productIosId;
 }
 function choosePayment(payment){
   var productIosId = config.productIosId;
-  if(payment === "stripe") rechargeDiamond(productIosId, "stripe");
+  if(payment === "stripe") rechargeDiamond(productIosId, "stripe", config.rechargeItem);
   else toast(payment, "No Use.", "", 3000);
 }
-function rechargeDiamond(productIosId, payment){
+function rechargeDiamond(productIosId, payment, rechargeItem){
   console.log("productIosId : ", productIosId);
   if(!productIosId) {
     println("No ProductIosId");
     return;
   }
-  if(payment === "stripe") rechargeByStripe(productIosId);
+  if(payment === "stripe") rechargeByStripe(productIosId, rechargeItem);
 }
 function queryDiamond(call){
   var url = `https://${config.domain}/api/user/info`;
@@ -1171,12 +1178,14 @@ function rechargeSuccess(result){
   }, 500);
 }
 function rechargeFailed(obj){
-  println("Recharge Failed.", obj);
+  toast("Recharge Failed.", obj);
 }
 /* ------------------------------------ Stripe ------------------------------------ */
 const stripe = Stripe("pk_test_kKiIIn5jbIixQ96SV4NpPZyf00hulVQYuC");
 //  - pk_live_Zt23ptBqWWJ8as6k2MBUF3xn00XviuaLpZ
-function rechargeByStripe(productIosId){
+function rechargeByStripe(productIosId, rechargeItem){
+  document.querySelector("#stripe_modal .diamond-amount").innerText = rechargeItem.diamond;
+  document.querySelector("#stripe_modal .pay-money").innerText = rechargeItem.money;
   showModal("stripe_modal");
   var url = `https://${config.domain}/api/stripe/payment/init`;
   var dataObj = {
@@ -1318,9 +1327,9 @@ function hidePopup(eleId) {
 }
 /* ------------------------------------ Edit Base Info ------------------------------------ */
 function showBaseinfoPopup(){
-  var avatar = storageHelper.getItem("avatar") || "";
+  var avatar = storageHelper.getItem("avatar") || config.user.photoURL;
   var coverShow = document.getElementById("cover_show");
-  coverShow.src = avatar ? avatar : config.user.photoURL;
+  coverShow.src = avatar;
   showPopup("edit_baseinfo_popup");
   addSaveBaseinfoListener();
 }
@@ -1335,6 +1344,12 @@ function saveBaseinfo(){
   if(!nickname) {
     toast("Your nickname is invalid value.", "Please check again.", "warn", 2000);
     return;
+  } else if(nickname.length < 8 || nickname.length > 20){
+    toast("8 < The length of your nickname < 20", null, "warn", 3000);
+    return;
+  } else if(!cover) {
+    toast("Please choose a avatar.",null,null, 3000);
+    return;
   }
   var form = new FormData();
   if(cover) form.append("filename", cover);
@@ -1346,6 +1361,8 @@ function saveBaseinfo(){
       toast("Success",null, "success", 3000);
       login();
       hidePopup("edit_baseinfo_popup");
+      storageHelper.setItem("avatar", URL.createObjectURL(cover));
+      views.youContainer.style.backgroundImage = `url(${URL.createObjectURL(cover)})`;
     }else throw res.data.msg;
   }).catch(error => {
     println("SaveBaseInfo",error);
@@ -1356,7 +1373,7 @@ function addSaveBaseinfoListener(){
   var save = document.getElementById("save_baseinfo");
   save.onclick = saveBaseinfo;
   var cover = document.getElementById("cover");
-  document.getElementById("nickname").value = config.user.displayName;
+  document.getElementById("nickname").value = storageHelper.getItem("nickname") || config.user.displayName;
   var coverShow = document.getElementById("cover_show");
   cover.onchange = function(){
     var file = cover.files[0];

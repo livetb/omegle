@@ -147,7 +147,7 @@ function md5Sign(timestamp, uid) {
   return hex_md5(str).toUpperCase();
 }
 /* ------------------------------------ Login ------------------------------------ */
-const firebaseConfig = {
+var firebaseConfig = {
   apiKey: "AIzaSyAljPP_UOqSqydEXf-6Nnc9pkUzmOxTLWM",
   authDomain: "omegle-9c76d.firebaseapp.com",
   databaseURL: "https://omegle-9c76d.firebaseio.com",
@@ -159,7 +159,7 @@ const firebaseConfig = {
 };
 // Initialize Firebase
 firebase.initializeApp(firebaseConfig);
-const db = firebase.firestore();
+// firebase.analytics().logEvent('notification_received');
 console.log("Initialize Firebase.");
 
 var ui = new firebaseui.auth.AuthUI(firebase.auth());
@@ -225,7 +225,7 @@ function initView(isLogin){
  */
 firebase.auth().onAuthStateChanged(function (user) {
   var uid = storageHelper.getItem("uid");
-  initView(user && uid);
+  initView(user);
   if (user && uid) {
     config.user = user;
     connectSocket(); // Connect Our Socket Server.
@@ -239,6 +239,7 @@ firebase.auth().onAuthStateChanged(function (user) {
 function uiStart(){
   ui.start("#firebaseui-auth-container", uiConfig);
 }
+uiStart();
 /**
  * When Firebase Login Success, Call The Function.
  */
@@ -453,7 +454,7 @@ var callStranger = throttle(function(){
   });
 }, config.allIntervalTime, function(){
   console.warn("Call Stranger Already Running...");
-})
+});
 /**
  * 2.Server Forward User Call to Host.
  * @param {*} obj 
@@ -678,7 +679,7 @@ var changeStranger = (function(){
       views.conversationList.innerHTML = "";
       views.conversationList.appendChild(serverState);
       disabledOnlyMatchedView(isMatched);
-      showView(views.waitStranger, "none");
+      // showView(views.waitStranger, "none");
       config.inMatch = false;
     }
     oldMatched = isMatched;
@@ -751,12 +752,15 @@ var getRandomStranger = throttle(function(){
 });
 
 function addChatListener(){
+  var nextTips = throttle(function(){
+    toast("Really Next?","Clcik <Really?> Button to Match Next Stranger.", "warn", 10);
+  }, 10);
   var startMatch = throttle(function(isNext){
-    var nowTime = Date.now(), callYouTime = config.callYouTime || 0, lastMatchTime = config.lastMatchTime || 0;
+    var nowTime = Date.now(), callYouTime = config.callYouTime || 0;
     println(`NowTime: ${nowTime} - CallYouTime: ${callYouTime} - Time difference：${nowTime - callYouTime}`);
     if((nowTime - callYouTime) < 20 * 1000){
       // config.noFirstCall = true;
-      println("Receive Call, Now Connect.",null,null,10000);
+      println("Receive Call, Now Connect.");
       initAgora();
       config.callYouTime = 0;
       config.noFirstMatch = true;
@@ -766,7 +770,7 @@ function addChatListener(){
       config.noFirstMatch = true;
       return;
     }else if(callYouTime > 1){
-      println("Did not answer for a long time，Server hangs up automatically.", "Ready to call.", "warn", 5 * 1000);
+      println("Did not answer for a long time，Server hangs up automatically.", "Ready to call.", "warn");
     }else {
       println("Call not received, Ready to call.");
     }
@@ -779,7 +783,7 @@ function addChatListener(){
       views.startOrNext.checked = false;
       document.querySelector(".start-or-cancel").classList.add("have-stranger");
     }else {
-      toast("Really Next?","Clcik <Really?> Button to Match Next Stranger.", "warn", 6000);
+      nextTips();
     }
   }, 0.01, function(seconds){
     views.startOrNext.checked = false;
@@ -836,6 +840,10 @@ async function getDevices(){
 }
 // Create a client
 rtc.client = AgoraRTC.createClient({mode: "rtc", codec: "vp8"});
+/**
+ * 
+ * @param {Boolean} noRelease - unpublish localstream?
+ */
 function initAgora(noRelease){
   if(!AgoraRTC.checkSystemRequirements()){
     toast("Sorry, You Browser Don't Support The Website, Please Change A Browswer.");
@@ -889,13 +897,13 @@ function releaseLocalStream(noRelease){
     console.log("3.1 - play local stream");
     rtc.localStream.play("you-container",  {fit: "contain"});
     //3.2 - Publish the local stream
-    if(noRelease) return;
-    publishLocalStream();
+    if(!noRelease) publishLocalStream();
   }, function (err) {
     setStrangerUid(null);
     console.error("3 - init local stream failed ", err);
     if(err.msg === "NotAllowedError"){
-      println(err.info, err.msg, "error", 5000);
+      toast("Unauthorized, does not work", null, "warn", 3000);
+      println(err.info, err.msg, "error");
     }else println("Video Chat Error");
   });
 }
@@ -923,10 +931,9 @@ function unPublishLocalStream(){
 /**
  * 
  */
-// var alreadyAddStreamListener = false;
 function addStreamListener(){
   // remote
-  rtc.client.on("stream-added", function (evt) {  
+  var onStreamAdd = function (evt) {  
     var remoteStream = evt.stream;
     var id = remoteStream.getId();
     if (id !== rtc.params.uid) {
@@ -935,9 +942,11 @@ function addStreamListener(){
       });
     }
     console.log('stream-added remote-uid: ', id);
-  });
+  }
+  rtc.client.off("stream-added", onStreamAdd)
+  rtc.client.on("stream-added", onStreamAdd);
   
-  rtc.client.on("stream-subscribed", function (evt) {
+  var onStreamSubscribed = function (evt) {
     var remoteStream = evt.stream;
     var id = remoteStream.getId();
     // Add a view for the remote stream.
@@ -949,9 +958,11 @@ function addStreamListener(){
     remoteStream.play("stranger-container", {fit: "contain"});
     console.log('stream-subscribed remote-uid: ', id);
     console.log("Other side publish stream.");
-  });
+  }
+  rtc.client.off("stream-subscribed", onStreamSubscribed);
+  rtc.client.on("stream-subscribed", onStreamSubscribed);
 
-  rtc.client.on("stream-removed", function (evt) {
+  var onStreamRemoved = function (evt) {
     println("Really Remove Remote Stream. ", null, "warn", 10 * 1000);
     var remoteStream = evt.stream;
     var id = remoteStream.getId();
@@ -962,7 +973,10 @@ function addStreamListener(){
       strangerVideo.remove();
     }
     console.log('stream-removed remote-uid: ', id);
-  });
+  }
+  rtc.client.off("stream-removed", onStreamRemoved);
+  rtc.client.on("stream-removed", onStreamRemoved);
+
   var onPeerLeave = throttle(function(evt) {
     var uid = evt.uid;
     var reason = evt.reason;
@@ -973,11 +987,15 @@ function addStreamListener(){
   }, 5, function(seconds){
     println(`onPeerLeave only excute once in ${seconds}s.`);
   });
+  rtc.client.off("peer-leave", onPeerLeave);
   rtc.client.on("peer-leave", onPeerLeave);
   // local
-  rtc.client.on("stream-unpublished", function(evt) {
+  var onStreamUnpublished = function(evt) {
     println("local stream unpublished", evt);
-  });
+  }
+  rtc.client.off("stream-unpublished", onStreamUnpublished);
+  rtc.client.on("stream-unpublished", onStreamUnpublished);
+
   var publishedListener = throttle(function(evt){
     println("local stream published",evt);
     config.inPublishLocalStream = true;
@@ -988,6 +1006,7 @@ function addStreamListener(){
   }, config.allIntervalTime, function(){
     println("Stream-Published is Running...");
   });
+  rtc.client.off("stream-published", publishedListener);
   rtc.client.on("stream-published", publishedListener);
 }
 /**
@@ -1000,18 +1019,19 @@ function leaveChannel(unPublish){
     // Stop playing the local stream
     if(!rtc.localStream) return;
     rtc.localStream.stop();
-    // Close the local stream
     rtc.localStream.close();
     // Stop playing the remote streams and remove the views
     var youVideo = document.querySelector("#you-container > div:last-child");
-    if(youVideo.id.match("player")) youVideo.remove();
-    if(unPublish) {
-      unPublishLocalStream();
-      var strangerVideo = document.querySelector("#stranger-container > div:last-child");
-      if(strangerVideo && strangerVideo.id.match("player")) {
-        println("Remove StrangerStream : ", strangerVideo.id, "warn");
-        strangerVideo.remove();
-      }
+    if(youVideo && youVideo.id.match("player")) youVideo.remove();
+
+    while (rtc.remoteStreams.length > 0) {
+      var stream = rtc.remoteStreams.shift();
+      stream.stop();
+    }  
+    var strangerVideo = document.querySelector("#stranger-container > div:last-child");
+    if(strangerVideo && strangerVideo.id.match("player")) {
+      println("Remove StrangerStream : ", strangerVideo.id);
+      strangerVideo.remove();
     }
     console.log("client leaves channel success");
   }, function (err) {
@@ -1045,7 +1065,7 @@ function hideBodyScrollbar() {
 function showBodyScrollbar() {
   var modalNum = +(document.body.getAttribute("modal-num") || "0");
   document.body.setAttribute("modal-num", --modalNum);
-  if(modalNum < 0) document.body.classList.remove("hide-scroll-bar");
+  if(modalNum <= 0) document.body.classList.remove("hide-scroll-bar");
 }
 function showModal(id){
   hideBodyScrollbar();
@@ -1157,9 +1177,9 @@ function queryDiamond(call){
   var url = `https://${config.domain}/api/user/info`;
   axios.post(url, { code: getYouUid() }, { headers: getHeaders()}).then(res => {
     var diamond = res.data.data.diamond;
-    call({success: true, diamond: diamond});
+    if(typeof call === "function") call({success: true, diamond: diamond});
   }).catch(error => {
-    call({success: false, error: error});
+    if(typeof call === "function") call({success: false, error: error});
   });
 }
 function rechargeSuccess(result){

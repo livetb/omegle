@@ -78,7 +78,7 @@
   <link rel="stylesheet" href="./assets/css/style.css" />
 </head>
 
-<body onload="uiStart()">
+<body>
 <div class="auto-container">
   <header id="header" class="auto-padding">
     <div class="header-left">
@@ -108,12 +108,12 @@
   <main id="main" class="auto-padding">
     <div id="you-and-stranger">
       
-      <div id="you-container" onclick="fullScreen(this)"> <!-- You -->
+      <div id="you-container" ondblclick="fullScreen(this)"> <!-- You -->
         <div class="only-nologin-show logo-bg">
           <img src="./assets/img/logo-text.png" />
         </div>
      </div>
-      <div id="stranger-container" onclick="fullScreen(this)"> <!-- Stranger -->
+      <div id="stranger-container" ondblclick="fullScreen(this)"> <!-- Stranger -->
         <div class="only-nologin-show logo-bg">
           <img src="./assets/img/logo-text.png" />
         </div>
@@ -305,9 +305,18 @@
 
 </div>
 <!-- firebase -->
-<!-- firebase -->
+
 <script src="https://www.gstatic.com/firebasejs/6.2.0/firebase.js"></script>
 <script src="https://cdn.firebase.com/libs/firebaseui/3.5.2/firebaseui.js"></script>
+
+<script src="https://www.googletagmanager.com/gtag/js?id=G-KQ6P6Z7G76"></script>
+<script>
+  window.dataLayer = window.dataLayer || [];
+  function gtag(){dataLayer.push(arguments);}
+  gtag('js', new Date());
+
+  gtag('config', 'G-CTKM4FYHZY');
+</script>
 <!-- axios -->
 <script src="https://cdn.jsdelivr.net/npm/axios/dist/axios.min.js"></script>
 <!-- Stripe -->

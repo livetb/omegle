@@ -94,6 +94,84 @@ function getHeaders(){
     "authorization": storageHelper.getItem("token")
   }
 }
+/* ------------------------------------ New Api ------------------------------------ */
+function apiStart(isNext){
+  if(config.inMatch) {
+    println("Already start matching.");
+    return;
+  }
+  views.startOrNext.checked = false;
+  config.inMatch = true;
+  var url = `https://${config.domain}/api/radar/start`;
+  axios.post(url, { status: 1}, { headers: getHeaders()}).then(res => {
+    console.log("apiStart => ", res.data);
+    initAgora();
+  }).catch(error => {
+    console.error(error);
+  });
+}
+function apiEnd(){
+  config.inMatch = false;
+  var url = `https://${config.domain}/api/radar/end`;
+  axios.post(url, { status: 1}, { headers: getHeaders()}).then(res => {
+    console.log("apiEnd => ", res.data);
+  }).catch(error => {
+    console.error(error);
+  });
+  apiTestMatch();
+}
+function apiChat(obj){
+  var roomId = obj.roomId ? obj.roomId : config.roomId;
+  if(!roomId) throw "apiChat => No roomId";
+  if(obj.remoteUid !== "3421604371457866" && obj.remoteUid !== "3421604371566241"){
+    println("No our roomId, Skip.");
+    apiSkip(roomId);
+    return;
+  }
+  setStrangerUid(obj.remoteUid);
+  config.roomId = roomId;
+  initAgoraOption(obj);
+  var url = `https://${config.domain}/api/radar/chat`;
+  axios.post(url, { status: 1, code: roomId}, { headers: getHeaders()}).then(res => {
+    console.log("apiChat => ", res.data);
+    showLocalStream(true);
+  }).catch(error => {
+    console.error(error);
+    apiOver();
+  });
+  apiEnd();
+}
+function apiSkip(roomId){
+  roomId = roomId ? roomId : config.roomId;
+  if(!roomId) throw "apiSkip => No roomId";
+  var url = `https://${config.domain}/api/radar/skip`;
+  axios.post(url, { status: 1, code: roomId}, { headers: getHeaders()}).then(res => {
+    console.log("apiSkip => ", res.data);
+  }).catch(error => {
+    console.error(error);
+  });
+}
+function apiOver(obj){
+  console.log("apiOver : ", obj);
+  var roomId = obj ? obj.roomId : config.roomId;
+  if(!roomId) throw "apiOver => No roomId";
+  var url = `https://${config.domain}/api/chat/over`;
+  axios.post(url, { status: 1, code: roomId}, { headers: getHeaders()}).then(res => {
+    console.log("apiOver => ", res.data);
+    leaveChannel();
+  }).catch(error => {
+    console.error(error);
+  });
+}
+function apiTestMatch(){
+  var url = `https://${config.domain}/myJob/testMatch?uid1=3421604371457866&uid2=3421604371566241`;
+  axios.post(url).then(res => {
+    console.log("apiTestMatch => ", res.data)
+  }).catch(error => {
+    console.error(error);
+  });
+}
+/* ------------------------------------ Error ------------------------------------ */
 /**
  * @param {String} msg - Error Message
  * @param {Interger} status - Default 0: println-error, 1: println-warning
@@ -240,6 +318,16 @@ function uiStart(){
   ui.start("#firebaseui-auth-container", uiConfig);
 }
 uiStart();
+function getRegion(){
+  var re = /^(?:(en-GB-oed|i-ami|i-bnn|i-default|i-enochian|i-hak|i-klingon|i-lux|i-mingo|i-navajo|i-pwn|i-tao|i-tay|i-tsu|sgn-BE-FR|sgn-BE-NL|sgn-CH-DE)|(art-lojban|cel-gaulish|no-bok|no-nyn|zh-guoyu|zh-hakka|zh-min|zh-min-nan|zh-xiang))$|^((?:[a-z]{2,3}(?:(?:-[a-z]{3}){1,3})?)|[a-z]{4}|[a-z]{5,8})(?:-([a-z]{4}))?(?:-([a-z]{2}|\d{3}))?((?:-(?:[\da-z]{5,8}|\d[\da-z]{3}))*)?((?:-[\da-wy-z](?:-[\da-z]{2,8})+)*)?(-x(?:-[\da-z]{1,8})+)?$|^(x(?:-[\da-z]{1,8})+)$/i;
+
+  let foo = re.exec(navigator.language);
+  let bar = re.exec(navigator.language);
+
+  console.log(`region ${foo[5]}`); // 'region AT'
+  console.log(`region ${bar[5]}`); // 'region CN'
+  return bar || "US";
+}
 /**
  * When Firebase Login Success, Call The Function.
  */
@@ -252,8 +340,10 @@ function login(successTips, failedTips){
     loginId: config.user.uid,
     nickName: config.user.displayName,
     sign: md5Login(config.user.uid, nowTime),
-    appId: 31,
-    thirdType: 6
+    appId: 342,
+    appKey: "fjsihaueoewh36585489848jhjjoidfggeeu342",
+    thirdType: 6,
+    regionCode: getRegion()
   }
   axios.post(url, dataObj).then(res => {
     console.log("Login => ", res.data);
@@ -327,7 +417,7 @@ var config = {
   userRole: "audience",
   videoScale: 0.7,
   heartbeat: 0, 
-  domain: "t.livehub.cloud", //"t.livego.live" , "vfun.mixit.fun", "t.livehub.cloud"
+  domain: "vfun.mixit.fun", //"t.livego.live" , "vfun.mixit.fun", "t.livehub.cloud"
   strangerUid: null,
   coverMaxSize: 2 * 1024 * 1024, //2m
   giftList: {
@@ -337,7 +427,10 @@ var config = {
     rocket: 1000
   },
   rechargeList: null,
-  rechargeItem: null
+  rechargeItem: null,
+  agora: {
+    useToken: false
+  }
 }
 function getDomain(){
   
@@ -427,130 +520,6 @@ function onSendMsgListener(){
 }
 onSendMsgListener();
 /* ------------------------------------ Call ------------------------------------ */
-/**
- * 1.User Start Video Call, Only Excute Once In {config.allIntervalTime} seconds.
- */
-var callStranger = throttle(function(){
-  var url = `https://${config.domain}/api3/video/call`;
-  var dataObj = {
-    roomId: option.channel,
-    agoId: option.appID,
-    remoteUid: getStrangerUid(),
-    remoteId: option.uid,
-    remoteToken: option.token
-  }
-  axios.post(url, dataObj, { headers: getHeaders()}).then(res => {
-    console.log("CallStranger => ", res.data);
-    println("1.User Start Video Call.");
-    if(res.data.msg === "success"){
-      var result = res.data;
-      initAgoraOption(result.data);
-      initAgora(true);
-      config.userRole = "audience";
-    }else throw `Status : ${res.data.status}`;
-  }).catch(error => {
-    setStrangerUid(null);
-    console.error("Call Stranger Error.", error);
-  });
-}, config.allIntervalTime, function(){
-  console.warn("Call Stranger Already Running...");
-});
-/**
- * 2.Server Forward User Call to Host.
- * @param {*} obj 
- */
-function videoCallYou(obj){
-  console.warn(obj);
-  if(config.inMatch){
-    config.userRole = "host";
-    publishLocalStream();
-    println("In Matching, Receive Other Match。",null,null,10 * 1000);
-    return;
-  }
-  config.callYouTime = Date.now();
-  console.log("Receive Video Call.",obj);
-  config.chatNo = obj.chatNo;
-  initAgoraOption(obj);
-  setStrangerUid(obj.remoteUid);
-  // initAgora();
-  config.userRole = "host"; 
-  println("2.Server Forward User Call to Host.");
-}
-/**
- * 3.Host Answer Video Call.
- */
-var answerCall = throttle(function(){
-  var url = `https://${config.domain}/api3/video/answer`;
-  var dataObj = {
-    roomId: option.channel,
-    remoteUid: +getStrangerUid(),
-    status: 1
-  }
-  axios.post(url, dataObj, { headers: getHeaders() }).then(res => {
-    println("3.Host Answer Video Call.",res.data,"success");
-  }).catch(error => {
-    println("3.Host Answer Video Call. - Error",error, "error");
-  });
-}, 5, function(seconds){
-  console.log(`%cHost Only Answer Call Once In ${seconds}s.`,"color: #00F;");
-});
-/**
- * 4.Server Forward Host Receive Call To Audience.
- */
-function strangerAnswerCall(obj){
-  config.chatNo = obj.chatNo;
-  println("4.Server Forward Host Receive Call To Audience.", obj);
-  // initAgora();
-  publishLocalStream();
-}
-/**
- * 5.You Hnag Up.
- */
-function youHangup(callFun){
-  println("You Hangup.",null, "error");
-  if(!getStrangerUid()) return;
-  var url = `https://${config.domain}/api3/video/close`;
-  var dataObj = {
-    roomId: option.channel,
-    remoteUid: +getStrangerUid()
-  }
-  axios.post(url, dataObj, { headers: getHeaders() }).then(res => {
-    println("5.You Hnag Up.", res.data);
-    if(typeof callFun === "function") callFun(true);
-  }).catch(error => {
-    println("5.You Hnag Up. - Error", error, "error");
-    if(typeof callFun === "function") callFun(false);
-  });
-  config.chatNo = null;
-  leaveChannel(true);
-}
-/**
- * 6.Server Forward Hang Up To Other Side.
- */
-var strangerHangupYou = throttle(function(obj){
-  println("Receive CC from Server.", obj, "error");
-  if(obj.temp === "ccPay"){
-    queryDiamond(Object => {
-      if(Object.success && Object.diamond < 100){
-        toast("The balance is insufficient, please recharge", null, "error", 5000);
-        showRechargeList();
-      }
-    });
-  }
-  println("6.Server Forward Hang Up To Other Side.",obj.chatNo);
-  if(obj.chatNo === config.chatNo) {
-    youHangup();
-    toast("The other already left.");
-    println("ChatNo Is Same, Hang Up The Call.");
-  }else if(!config.chatNo && config.inMatch){
-    youHangup();
-    toast("The other did not answer for a long time，Please try again.");
-    // getRandomStranger();
-  }
-}, config.allIntervalTime, function(){
-  console.warn("Stranger Hangup You Already Running...");
-});
-
 function debugCall(){
   console.log(`YouUid: ${getYouUid()} - strangerUid: ${getStrangerUid()}`);
   console.log(`You Chatno : ${config.chatNo} - inMatch: ${config.inMatch}`);
@@ -558,9 +527,9 @@ function debugCall(){
   console.log("Option: ", option);
 }
 /* ------------------------------------ Chat ------------------------------------ */
-function receiveMsg(msg, isGift){
+function receiveMsg(msg, msgType){
   var msgNode = document.createElement("p");
-  msgNode.setAttribute("class", isGift ? "gift-msg" : "stranger-msg");
+  msgNode.setAttribute("class", msgType ? msgType+"-msg" : "stranger-msg");
   msgNode.innerText = msg;
   document.getElementById("conversation-list").appendChild(msgNode);
 }
@@ -638,12 +607,13 @@ function connectSocket(){
       switch(obj.key){
         case "MC": {
           var isGift = obj.temp === "3";
-          receiveMsg(obj.value, isGift);
+          receiveMsg(obj.value, isGift ? "gift" : "stranger");
         } break;
-        case "SC": videoCallYou(obj); break;
+        // case "SC": videoCallYou(obj); break;
         case "HB": config.heartbeat++; if(config.headers % 10 === 1) console.log("Heartbeat : ", config.heartbeat); break;
-        case "AC": strangerAnswerCall(obj); break;
-        case "CC": strangerHangupYou(obj); break;
+        // case "AC": strangerAnswerCall(obj); break;
+        case "CC": apiOver(obj); break;
+        case "RC": apiChat(obj); break;
         default: console.log(obj); break;
       }
   });
@@ -682,26 +652,19 @@ var changeStranger = (function(){
     if(isMatched === oldMatched){
       println("Match state no change.");
     }else{
-      rtc.client = AgoraRTC.createClient({mode: "rtc", codec: "h264"});
+      // rtc.client = AgoraRTC.createClient({mode: "rtc", codec: "h264"});
       println("Match state already changed.");
       var serverState = views.conversationList.firstElementChild;
       serverState.innerText = isMatched ? "Already matched stranger." : "No match stranger.";
       views.conversationList.innerHTML = "";
       views.conversationList.appendChild(serverState);
       disabledOnlyMatchedView(isMatched);
-      // showView(views.waitStranger, "none");
-      config.inMatch = false;
     }
     oldMatched = isMatched;
   }
 })();
-// function changeStranger(isMatched){
-  
-// }
 function getStrangerUid(){
   console.log("%cGet Stranger Uid: "+config.strangerUid, "color: red;");
-  if(!config.strangerUid) config.inMatch = false;
-  else config.inMatch = true;
   return config.strangerUid;
 }
 function setStrangerUid(uid){
@@ -709,19 +672,12 @@ function setStrangerUid(uid){
   if(!uid) {
     config.strangerUid = null;
     config.chatNo = null;
-    views.serverState.innerText = "No match stranger.";
     showView(views.waitStranger, "none");
     views.strangerContainer.style.backgroundImage = "";
-    config.inMatch = false;
-  }else if(config.isTest) {
-    config.strangerUid = getQueryVariable("id") || null;
   }else config.strangerUid = uid;
 }
 function getYouUid(){
-  if(config.firebaseLogin) return storageHelper.getItem("uid");
-
-  if(config.user.uid === "YFa0FqVUpybz72Qm9MmZCw4troq2") return "24680";
-  else return "13579";
+  return storageHelper.getItem("uid");
 }
 function setStrangerState(state, msg) {
   switch(state){
@@ -731,75 +687,8 @@ function setStrangerState(state, msg) {
       console.log("noMatch"); break;
   }
 }
-/**
- * Match New Stranger, And Over Current call(if calling).
- */
-var getRandomStranger = throttle(function(){
-  if(config.chatNo){
-    println("In Calling, You Hang Up.");
-    youHangup();
-  }
-  var url = `https://${config.domain}/api/together`;
-  var dataObj = { code: getQueryVariable("id") };
-  axios.post(url, config.isTest ? dataObj : null, { headers: getHeaders()}).then(res => {
-    console.log("Success + get random stranger + ", res.data);
-    var result = res.data;
-    if(result.msg === "success") {
-      setStrangerUid(result.data.userInfo.uid);
-      initAgoraOption(result.data);
-      if(config.videoCall) callStranger();
-      if(!config.videoCall) showView(views.waitStranger, "none");
-      views.strangerContainer.style.backgroundImage = `url(${res.data.data.userInfo.avatar})`;
-    }
-    else throw "Failed : GetRandomStranger";
-  }).catch(error => {
-    setStrangerUid(null);
-    console.error(error);
-    toast("System error, please try again later",null, "warn", 3000);
-  });
-}, config.allIntervalTime, function(seconds){
-  toast(`Only match once in ${seconds} seconds.`, "Please try again later", "warn", 3000);
-});
 
 function addChatListener(){
-  var nextTips = throttle(function(){
-    toast("Really Next?","Clcik <Really?> Button to Match Next Stranger.", "warn", 10);
-  }, 10);
-  var startMatch = throttle(function(isNext){
-    var nowTime = Date.now(), callYouTime = config.callYouTime || 0;
-    println(`NowTime: ${nowTime} - CallYouTime: ${callYouTime} - Time difference：${nowTime - callYouTime}`);
-    if((nowTime - callYouTime) < 20 * 1000){
-      // config.noFirstCall = true;
-      println("Receive Call, Now Connect.");
-      initAgora();
-      config.callYouTime = 0;
-      config.noFirstMatch = true;
-      showView(views.waitStranger);
-      views.startOrNext.checked = false;
-      document.querySelector(".start-or-cancel").classList.add("have-stranger");
-      config.noFirstMatch = true;
-      return;
-    }else if(callYouTime > 1){
-      println("Did not answer for a long time，Server hangs up automatically.", "Ready to call.", "warn");
-    }else {
-      println("Call not received, Ready to call.");
-    }
-    // println(""+isNext,null,"tips");
-    if(!isNext || !config.chatNo || !getStrangerUid()){
-      println("Already Login. Start match random stranger.");
-      getRandomStranger();
-      config.noFirstMatch = true;
-      showView(views.waitStranger);
-      views.startOrNext.checked = false;
-      document.querySelector(".start-or-cancel").classList.add("have-stranger");
-    }else {
-      nextTips();
-    }
-  }, 0.01, function(seconds){
-    views.startOrNext.checked = false;
-    toast(`Only match once in ${seconds} seconds.`, "Please try again later", "warn", 3000);
-  });
-
   views.startOrNext.addEventListener("change", function(){
     var isNext = this.checked;
     if(!config.user){
@@ -807,11 +696,11 @@ function addChatListener(){
       showLogin();
       return;
     }
-    startMatch(isNext);
+    apiStart(isNext);
   });
   views.cancelNext.addEventListener("click", function(){
     views.startOrNext.checked = false;
-  })
+  });
 }
 addChatListener();
 /* ------------------------------------ Agora ------------------------------------ */
@@ -825,73 +714,70 @@ var rtc = {
 };
 // Options for joining a channel
 var option = {
-  appID: null,
+  appID: "9a9ad6aa60bc4b83ab996da07b04850b",
   channel: null,
-  uid: null,
+  uid: storageHelper.getItem("uid").slice(-8),
   token: null
 }
 
 function initAgoraOption(obj){
-  option.appID = obj.agoId;
+  // option.appID = "9a9ad6aa60bc4b83ab996da07b04850b";
   option.channel = obj.roomId;
-  option.uid = obj.id || obj.remoteId;
-  option.token = obj.token;
+  // option.uid = storageHelper.getItem("uid").slice(-8);
+  if(config.agora.useToken) option.token = obj.token;
 }
-async function getDevices(){
-  var result = null;
-  await AgoraRTC.getDevices (function(devices) {
-    // console.table(devices);
-    result = devices;
+function getDevices(call){
+  AgoraRTC.getDevices (function(devices) {
+    console.table(devices);
+    if(typeof call === "function") call(devices);
   }, function(errStr){
-    // console.error("Failed to getDevice", errStr);
-    result = errStr;
+    console.error("Failed to getDevice", errStr);
   });
-  return result;
 }
 // Create a client
 rtc.client = AgoraRTC.createClient({mode: "rtc", codec: "vp8"});
-/**
- * 
- * @param {Boolean} noRelease - unpublish localstream?
- */
-function initAgora(noRelease){
+function initAgora(){
   if(!AgoraRTC.checkSystemRequirements()){
     toast("Sorry, You Browser Don't Support The Website, Please Change A Browswer.");
     return false;
-  }
-  if(!option.appID || !option.channel || !option.token){
-    toast("Missing parameters");
-    return;
   }
   console.log("initAgora : ", option.uid);
   //1 - Initialize the client
   rtc.client.init(option.appID, function () {
     console.log("1 - init success");
-    // Join a channel
-    rtc.client.join(option.token ? option.token : null, option.channel, option.uid ? +option.uid : null, function (uid) {
-      console.log("2 - join channel: " + option.channel + " success, uid: " + uid);
-      rtc.params.uid = uid;
-      releaseLocalStream(noRelease);
-    }, function(err) {
-      setStrangerUid(null);
-      toast("System error, Please Refresh the page.",null,"error",5000);
-      console.error("2 - client join failed", err)
-    });
-    }, (err) => {
+    showLocalStream();
+  }, (err) => {
     setStrangerUid(null);
     toast("System error, Please Refresh the page.",null,"error",5000);
     console.error("1 - ", err);
   });
   addStreamListener();
 }
-/**
- * 
- */
-function releaseLocalStream(noRelease){
-  console.log("Release Local Stream.");
+function joinChannel(){
+  if(!option.appID || !option.channel){
+    toast("Missing parameters");
+    return;
+  }
+  // Join a channel
+  rtc.client.join(option.token ? option.token : null, option.channel, option.uid ? +option.uid : null, function (uid) {
+    console.log("2 - join channel: " + option.channel + " success, uid: " + uid);
+    rtc.params.uid = uid;
+    publishLocalStream();
+  }, function(err) {
+    setStrangerUid(null);
+    toast("System error, Please Refresh the page.",null,"error",5000);
+    console.error("2 - client join failed", err)
+  });
+}
+function showLocalStream(nowJoin){
+  if(rtc.localStream && nowJoin){
+    joinChannel();
+    return;
+  }
+  console.log("Show Local Stream.");
   //3 - Create a local stream
   rtc.localStream = AgoraRTC.createStream({
-    streamID: rtc.params.uid,
+    streamID: storageHelper.getItem("uid").slice(-8), //rtc.params.uid
     audio: true,
     video: !config.shareScreen,
     screen: config.shareScreen,
@@ -907,7 +793,7 @@ function releaseLocalStream(noRelease){
     console.log("3.1 - play local stream");
     rtc.localStream.play("you-container",  {fit: "contain"});
     //3.2 - Publish the local stream
-    if(!noRelease) publishLocalStream();
+    if(nowJoin) joinChannel();
   }, function (err) {
     setStrangerUid(null);
     console.error("3 - init local stream failed ", err);
@@ -917,10 +803,13 @@ function releaseLocalStream(noRelease){
     }else println("Video Chat Error");
   });
   
-  // rtc.localStream.on("videoTrackEnded", function(evt){
-  //   toast("VideoTractEnd", evt, null, 10 * 1000);
-  //   releaseLocalStream();
-  // });
+  rtc.localStream.on("videoTrackEnded", function(evt){
+    println("VideoTrackEnd", evt, "error", 10 * 1000);
+    // releaseLocalStream();
+  });
+  rtc.localStream.on("accessDenied", function(evt){
+    toast("Unauthorized", null, null, 5000);
+  });
 }
 var publishLocalStream = throttle(function(){
   if(!rtc.localStream) {
@@ -933,7 +822,7 @@ var publishLocalStream = throttle(function(){
     config.inPublishLocalStream = false;
   });
   println("Publish localstream : "+config.userRole, null,null, 10 * 1000);
-}, config.allIntervalTime, function(seconds){
+}, 0.01, function(seconds){
   console.warn(`Publish localstream only excute once in ${seconds}s.`);
 });
 function unPublishLocalStream(){
@@ -963,6 +852,9 @@ function addStreamListener(){
   
   var onStreamSubscribed = function (evt) {
     var remoteStream = evt.stream;
+    remoteStream.on("videoTrackEnded", function(e){
+      println("Remote Video Track Ended.", e, "error");
+    });
     var id = remoteStream.getId();
     // Add a view for the remote stream.
     // addView(id);
@@ -996,9 +888,7 @@ function addStreamListener(){
     var uid = evt.uid;
     var reason = evt.reason;
     console.log("remote user left ", uid, "reason: ", reason);
-    youHangup(function(success){
-      toast("Other side already left.","Reason: "+reason, null, 3000);
-    });
+    apiOver();
   }, 5, function(seconds){
     println(`onPeerLeave only excute once in ${seconds}s.`);
   });
@@ -1023,17 +913,11 @@ function addStreamListener(){
   });
   rtc.client.off("stream-published", publishedListener);
   rtc.client.on("stream-published", publishedListener);
-
-  // var onVideoTrackEnd = function(evt){
-  //   toast("Video Track End.", evt, "warn", 10*1000);
-  // };
-  // rtc.client.off("videoTrackEnded", onVideoTrackEnd);
-  // rtc.client.on("videoTrackEnded", onVideoTrackEnd);
 }
 /**
  * 
  */
-function leaveChannel(unPublish){
+function leaveChannel(){
   setStrangerUid(null);
   if(!rtc.client) return;
   rtc.client.leave(function () {
@@ -1384,12 +1268,6 @@ function saveBaseinfo(){
   // console.log("Age: ",age);
   if(!nickname) {
     toast("Your nickname is invalid value.", "Please check again.", "warn", 2000);
-    return;
-  } else if(nickname.length < 8 || nickname.length > 20){
-    toast("8 < The length of your nickname < 20", null, "warn", 3000);
-    return;
-  } else if(!cover) {
-    toast("Please choose a avatar.",null,null, 3000);
     return;
   }
   var form = new FormData();

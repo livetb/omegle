@@ -417,6 +417,22 @@ p#server_state {
   content: "Me: ";
   font-weight: 700;
 }
+@keyframes systemMsg {
+  from  { color: #FFF; }
+  to    { color: #000; }
+}
+.system-msg {
+  font-size: 1rem !;
+  color: #000;
+  animation: systemMsg 0.5s ease-in-out 1 forwards;
+  font-family: 'Franklin Gothic Medium', 'Arial Narrow', Arial, sans-serif;
+  font-weight: 600;
+  line-height: 1.2rem;
+}
+.system-msg::before {
+  content: "System: ";
+  color: #fb05ef;
+}
 
 #conversation-bar {
   display: flex;

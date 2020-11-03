@@ -332,7 +332,7 @@ input#start-or-next:checked + label + #cancel-next {
   /* background: linear-gradient(180deg, #53C2FF 0%, #298FFE 100%); */
   transition: all 0.5s ease-in-out;
 }
-.have-stranger #start-or-next + label::after {
+.have-stranger#start-or-next + label::after {
   content: "Next";
 }
 #start-or-next:checked + label::after {
@@ -441,9 +441,9 @@ p#server_state {
 }
 #conversation-bar > * {
   height: 3rem;
-  margin-left: 1rem;
+  margin-right: 1rem;
 }
-#conversation-bar > *:first-child {
+#conversation-bar > *:last-child {
   margin: 0;
 }
 #gift {

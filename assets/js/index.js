@@ -97,9 +97,21 @@ function getHeaders(){
 /* ------------------------------------ New Api ------------------------------------ */
 function apiStart(isNext){
   if(config.inMatch) {
-    println("Already start matching.");
+    views.startOrNext.checked = false;
+    receiveMsg("Searching..., Please wait a minute.", "system");
     return;
   }
+  if(isNext && getStrangerUid()) {
+    println("Really Next? Click <Next> button to match next starnger.", "system");
+    return;
+  }
+  console.warn("Chat No : ", config.chatNo);
+  debugCall();
+  if(config.chatNo){
+    println("Have chat, Over the chat.");
+    apiOver();
+  }
+  showView(views.waitStranger);
   views.startOrNext.checked = false;
   config.inMatch = true;
   var url = `https://${config.domain}/api/radar/start`;
@@ -121,27 +133,30 @@ function apiEnd(){
   apiTestMatch();
 }
 function apiChat(obj){
-  var roomId = obj.roomId ? obj.roomId : config.roomId;
+  var roomId = obj.roomId;
   if(!roomId) throw "apiChat => No roomId";
-  if(obj.remoteUid !== "3421604371457866" && obj.remoteUid !== "3421604371566241"){
+  if(obj.remoteUid !== "3421604371457866" && obj.remoteUid !== "3421604371566241" && obj.remoteUid !== "3301603086703212"){
     println("No our roomId, Skip.");
     apiSkip(roomId);
     return;
   }
-  setStrangerUid(obj.remoteUid);
   config.roomId = roomId;
   initAgoraOption(obj);
   var url = `https://${config.domain}/api/radar/chat`;
   axios.post(url, { status: 1, code: roomId}, { headers: getHeaders()}).then(res => {
     console.log("apiChat => ", res.data);
+    config.chatNo = obj.chatNo;
+    setStrangerUid(obj.remoteUid);
     showLocalStream(true);
+    views.startOrNext.classList.add("have-stranger");
   }).catch(error => {
     console.error(error);
-    apiOver();
+    apiOver(config.roomId);
   });
   apiEnd();
 }
 function apiSkip(roomId){
+  showView(views.waitStranger, "none");
   roomId = roomId ? roomId : config.roomId;
   if(!roomId) throw "apiSkip => No roomId";
   var url = `https://${config.domain}/api/radar/skip`;
@@ -152,21 +167,34 @@ function apiSkip(roomId){
   });
 }
 function apiOver(obj){
-  console.log("apiOver : ", obj);
+  if(obj && typeof obj === "object") {
+    debugCall();
+    console.log("apiOver : ", obj);
+    if(obj.chatNo !== config.chatNo){
+      println("ChatNo not same.");
+      println("CurChatNo => "+ config.chatNo);
+      println("ReceiveChatNo => "+ obj.chatNo);
+      return;
+    }else println("ChatNo same.");
+    if(obj.temp === "ccPay"){
+      toast("Sorry, your balance is insufficient", null, "warn", 5000);
+      showRechargeList();
+    }
+  }
+  leaveChannel();
   var roomId = obj ? obj.roomId : config.roomId;
   if(!roomId) throw "apiOver => No roomId";
   var url = `https://${config.domain}/api/chat/over`;
   axios.post(url, { status: 1, code: roomId}, { headers: getHeaders()}).then(res => {
-    console.log("apiOver => ", res.data);
-    leaveChannel();
+    println("apiOver => ", res.data);
   }).catch(error => {
     console.error(error);
   });
 }
 function apiTestMatch(){
-  var url = `https://${config.domain}/myJob/testMatch?uid1=3421604371457866&uid2=3421604371566241`;
+  var url = `https://${config.domain}/myJob/testMatch?uid1=${getYouUid() || "3421604371566241"}&uid2=${getStrangerUid() || "3421604371566241"}`;
   axios.post(url).then(res => {
-    console.log("apiTestMatch => ", res.data)
+    println("apiTestMatch => ", res.data)
   }).catch(error => {
     console.error(error);
   });
@@ -326,7 +354,7 @@ function getRegion(){
 
   console.log(`region ${foo[5]}`); // 'region AT'
   console.log(`region ${bar[5]}`); // 'region CN'
-  return bar || "US";
+  return "US";
 }
 /**
  * When Firebase Login Success, Call The Function.
@@ -523,7 +551,7 @@ onSendMsgListener();
 function debugCall(){
   console.log(`YouUid: ${getYouUid()} - strangerUid: ${getStrangerUid()}`);
   console.log(`You Chatno : ${config.chatNo} - inMatch: ${config.inMatch}`);
-  console.log("You Role: ", config.userRole);
+  console.log("You Role: ", config.userRole, "- roomId: ", config.roomId);
   console.log("Option: ", option);
 }
 /* ------------------------------------ Chat ------------------------------------ */
@@ -577,7 +605,7 @@ function commitReceiveMsg(obj){
     println("Commit Success => ", res.data, "success");
   }).catch(error => {
     println("Commit Error => ", error, "error");
-  })
+  });
 }
 /**
  * Only Login Excute.
@@ -606,6 +634,10 @@ function connectSocket(){
       if(obj.levelType === 20) commitReceiveMsg(obj);
       switch(obj.key){
         case "MC": {
+          if(obj.remoteUid && obj.remoteUid !== getStrangerUid()){
+            println("Receive message, but uid not same.",null, "warn");
+            return;
+          }
           var isGift = obj.temp === "3";
           receiveMsg(obj.value, isGift ? "gift" : "stranger");
         } break;
@@ -672,20 +704,13 @@ function setStrangerUid(uid){
   if(!uid) {
     config.strangerUid = null;
     config.chatNo = null;
+    config.roomId = null;
     showView(views.waitStranger, "none");
     views.strangerContainer.style.backgroundImage = "";
   }else config.strangerUid = uid;
 }
 function getYouUid(){
   return storageHelper.getItem("uid");
-}
-function setStrangerState(state, msg) {
-  switch(state){
-    case "loading":
-      console.log("loading"); break;
-    case "noMatch":
-      console.log("noMatch"); break;
-  }
 }
 
 function addChatListener(){
@@ -738,7 +763,7 @@ function getDevices(call){
 rtc.client = AgoraRTC.createClient({mode: "rtc", codec: "vp8"});
 function initAgora(){
   if(!AgoraRTC.checkSystemRequirements()){
-    toast("Sorry, You Browser Don't Support The Website, Please Change A Browswer.");
+    receiveMsg("Sorry, You Browser Don't Support The Website, Please Change A Browswer.", "system");
     return false;
   }
   console.log("initAgora : ", option.uid);
@@ -747,15 +772,14 @@ function initAgora(){
     console.log("1 - init success");
     showLocalStream();
   }, (err) => {
-    setStrangerUid(null);
-    toast("System error, Please Refresh the page.",null,"error",5000);
+    receiveMsg("System error, Please Refresh the page.", "system");
     console.error("1 - ", err);
   });
   addStreamListener();
 }
 function joinChannel(){
   if(!option.appID || !option.channel){
-    toast("Missing parameters");
+    receiveMsg("Missing parameters", "system");
     return;
   }
   // Join a channel
@@ -764,8 +788,8 @@ function joinChannel(){
     rtc.params.uid = uid;
     publishLocalStream();
   }, function(err) {
-    setStrangerUid(null);
-    toast("System error, Please Refresh the page.",null,"error",5000);
+    apiOver();
+    receiveMsg("System error, Please Refresh the page.", "system");
     console.error("2 - client join failed", err)
   });
 }
@@ -795,10 +819,10 @@ function showLocalStream(nowJoin){
     //3.2 - Publish the local stream
     if(nowJoin) joinChannel();
   }, function (err) {
-    setStrangerUid(null);
+    apiOver();
     console.error("3 - init local stream failed ", err);
     if(err.msg === "NotAllowedError"){
-      toast("Unauthorized, does not work", null, "warn", 3000);
+      // receiveMsg("Unauthorized, does not work", "system");
       println(err.info, err.msg, "error");
     }else println("Video Chat Error");
   });
@@ -808,7 +832,7 @@ function showLocalStream(nowJoin){
     // releaseLocalStream();
   });
   rtc.localStream.on("accessDenied", function(evt){
-    toast("Unauthorized", null, null, 5000);
+    receiveMsg("Unauthorized, does not work", "system");
   });
 }
 var publishLocalStream = throttle(function(){
@@ -918,6 +942,7 @@ function addStreamListener(){
  * 
  */
 function leaveChannel(){
+  println("Leave Channel");
   setStrangerUid(null);
   if(!rtc.client) return;
   rtc.client.leave(function () {
@@ -951,7 +976,7 @@ function leaveChannel(){
     if(getStrangerUid()){
       showModal("gift_modal");
     }else {
-      toast("No match stranger, Click <Start> button to match.",null,null,3000);
+      receiveMsg("No match stranger, Click <Start> or <Next> button to match.", "system");
     }
   }
   var gifts = document.querySelectorAll(".gift-item");
@@ -996,10 +1021,11 @@ function sendGift(giftName){
     println("Gift name is : "+giftName,null,"",3000);
     return;
   }else if(!config.user) {
-    toast("No Login, Click <Login> button to login.");
+    showLogin();
+    receiveMsg("No Login, Click <Login> button to login.");
     return;
   }else if(!config.strangerUid) {
-    toast("No match stranger, Click <Start> button to match.");
+    receiveMsg("No match stranger, Click <Start> or <Next> button to match.", "system");
     return;
   }
   var url = `https://${config.domain}/api/user/reward`;
@@ -1012,14 +1038,14 @@ function sendGift(giftName){
   console.log("Send Gift : ", dataObj);
   axios.post(url, dataObj, { headers: getHeaders() }).then(res => {
     if(res.data.msg === "success"){
-      toast("Success!","thank your gift.", "", 2000);
+      hideModal(document.getElementById("gift_modal"));
       var msgNode = document.createElement("p");
       msgNode.setAttribute("class", "send-gift-msg");
       msgNode.innerText = `You send a ${giftName} gift.`;
       document.getElementById("conversation-list").appendChild(msgNode);
     }else throw res.data.msg;
   }).catch(error => {
-    toast("Failed. ",error, "error", 2000);
+    receiveMsg("Gift giving failed", "system");
     showRechargeList();
   });
 }
@@ -1097,13 +1123,13 @@ function rechargeSuccess(result){
   }
   setTimeout(function(){
     queryDiamond(obj => {
-      if(obj.success) toast("Success Recharge.", `You balance is : ${obj.diamond} diamond`, "success", 3000);
-      else toast("Query balance error!", "Plase try again or refresh the page.", "error", 3000);
+      if(obj.success) receiveMsg(`Success Recharge., You balance is : ${obj.diamond} diamond`, "system");
+      // else receiveMsg("Query balance error!", "Plase try again or refresh the page.", "error", 3000);
     });
   }, 1000);
 }
 function rechargeFailed(obj){
-  toast("Recharge Failed.", obj);
+  receiveMsg("Recharge Failed, Please refresh the page and try again", "system");
 }
 /* ------------------------------------ Stripe ------------------------------------ */
 const stripe = Stripe("pk_test_kKiIIn5jbIixQ96SV4NpPZyf00hulVQYuC");
@@ -1267,7 +1293,7 @@ function saveBaseinfo(){
   console.log("Nickname: ",nickname);
   // console.log("Age: ",age);
   if(!nickname) {
-    toast("Your nickname is invalid value.", "Please check again.", "warn", 2000);
+    receiveMsg("Your nickname is invalid value, Please check again.", "system");
     return;
   }
   var form = new FormData();
@@ -1277,7 +1303,6 @@ function saveBaseinfo(){
   axios.post(url, form, { headers: getHeaders()}).then(res => {
     console.log("SaveBaseInfo => ", res.data);
     if(res.data.msg === "success") {
-      toast("Success",null, "success", 3000);
       login();
       hidePopup("edit_baseinfo_popup");
       storageHelper.setItem("avatar", URL.createObjectURL(cover));
@@ -1285,7 +1310,7 @@ function saveBaseinfo(){
     }else throw res.data.msg;
   }).catch(error => {
     println("SaveBaseInfo",error);
-    toast("Failed", "Please try again or refresh the page.", "error", 3000);
+    // toast("Failed", "Please try again or refresh the page.", "error", 3000);
   });
 }
 function addSaveBaseinfoListener(){

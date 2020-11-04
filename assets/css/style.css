@@ -273,6 +273,9 @@ p.header-text {
   top: 0;
   background-color: #555555;
 }
+/* #stranger-container video {
+  transform: rotateY(0) !important;
+} */
 #you-and-stranger > div:nth-child(2) {
   margin: 1rem 0;
 }
@@ -701,13 +704,7 @@ p#server_state {
   .login-dialog { padding: 1rem 1rem; border-radius: 0; }
   .dialog-close { right: 0; }
 }
-.only-nologin-show {
-  display: none;
-}
-.only-login-show {
-  display: none;
-}
-.only-matched-show {
+.only-nologin-show, .only-noRealLogin-show, .only-login-show, .only-matched-show {
   display: none;
 }
 /* ------------------------------------ Gift ------------------------------------ */

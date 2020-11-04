@@ -91,8 +91,8 @@
     <!--  -->
     <div class="header-right">
       <div class="login-and-signup">
-        <div id="login_btn" onclick="showLogin()" class="login-btn only-nologin-show">Login</div>
-        <div id="signup_btn" onclick="showLogin()" class="signup-btn only-nologin-show">Sign up</div>
+        <div id="login_btn" onclick="showLogin()" class="login-btn only-noRealLogin-show">Login</div>
+        <div id="signup_btn" onclick="showLogin()" class="signup-btn only-noRealLogin-show">Sign up</div>
         <div id="logout_btn" onclick="logout()" class="logout-btn only-login-show">Logout</div>
       </div>
       <span class="online-now">33100+</span>
@@ -107,18 +107,14 @@
 <div class="auto-container">
   <main id="main" class="auto-padding">
     <div id="you-and-stranger">
-      
-      <div id="you-container" ondblclick="fullScreen(this)"> <!-- You -->
-        <div class="only-nologin-show logo-bg">
-          <img src="./assets/img/logo-text.png" />
-        </div>
-     </div>
       <div id="stranger-container" ondblclick="fullScreen(this)"> <!-- Stranger -->
         <div class="only-nologin-show logo-bg">
           <img src="./assets/img/logo-text.png" />
         </div>
         <div id="wait_stranger" visible-display="flex" class="lds-ring"><div></div><div></div><div></div><div></div></div>
       </div>
+      <div id="you-container" ondblclick="fullScreen(this)"> <!-- You -->
+     </div>
       <!-- Start Or Next  -->
       <div>
         <div class="start-or-cancel">
@@ -134,7 +130,7 @@
         <p id="server_state">No login.</p>
       </div>
       <div id="conversation-bar">
-        <div id="gift" class="only-matched-show" visible-display="inline-block">
+        <div id="gift" visible-display="inline-block">
           <img src="./assets/img/gift.png" />
         </div>
         <textarea id="you-input" class="only-matched-use hide-scroll-bar cus-disabled" disabled></textarea>
@@ -184,22 +180,18 @@
     <p>Show your love by sending gifts!🎁</p>
     <div class="gifts-list">
       <div id="gift_10" class="gift-item" alt="Lollipop">
-        <!-- <img class="gift-icon" src="./assets/img/gift-1.png" /> -->
         <div class="gift-icon sprite-gift gift-1"></div>
         <span class="gift-price">10</span>
       </div>
       <div id="gift_50" class="gift-item" alt="Rose">
-        <!-- <img class="gift-icon" src="./assets/img/gift-2.png" /> -->
         <div class="gift-icon sprite-gift gift-2"></div>
         <span class="gift-price">50</span>
       </div>
       <div id="gift_300" class="gift-item" alt="Flowers">
-        <!-- <img class="gift-icon" src="./assets/img/gift-3.png" /> -->
         <div class="gift-icon sprite-gift gift-3"></div>
         <span class="gift-price">300</span>
       </div>
       <div id="gift_1000" class="gift-item" alt="Rocket">
-        <!-- <img class="gift-icon" src="./assets/img/gift-4.png" /> -->
         <div class="gift-icon sprite-gift gift-4"></div>
         <span class="gift-price">1000</span>
       </div>
@@ -283,11 +275,6 @@
         <h2>Nickname</h2>
         <input type="text" id="nickname" maxlength="20"/>
       </div>
-      <!-- age -->
-      <!-- <div class="age">
-        <h2>How old are you?</h2>
-        <input type="number" id="age" max="999" maxlength="3" value="18"/>
-      </div> -->
     </div>
     <!-- Next -->
     <span id="save_baseinfo">Next</span>

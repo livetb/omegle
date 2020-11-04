@@ -332,11 +332,11 @@ function anonymousLogin(){
 }
 firebase.auth().onAuthStateChanged(function (user) {
   config.user = user;
-  option.uid = user.uid.slice(-8);
-  initAgora();
   showView(views.waitStranger);
   initView(user && !user.isAnonymous);
   if (user) {
+    option.uid = storageHelper.getItem("uid") ? storageHelper.getItem("uid").slice(-8) : "13245678";
+    initAgora();
     if(user.isAnonymous){
       login();
       println("Signin by anonymous.", null, "warn");
@@ -748,13 +748,13 @@ var rtc = {
 var option = {
   appID: "9a9ad6aa60bc4b83ab996da07b04850b",
   channel: null,
-  uid: config.user ? storageHelper.getItem("uid").slice(-8) : "12346578",
+  uid: storageHelper.getItem("uid") ? storageHelper.getItem("uid").slice(-8) : "12346578",
   token: null
 }
 
 function initAgoraOption(obj){
   option.channel = obj.roomId;
-  option.uid = config.user ? storageHelper.getItem("uid").slice(-8) : "12346578";
+  option.uid = storageHelper.getItem("uid") ? storageHelper.getItem("uid").slice(-8) : "12346578";
   if(config.agora.useToken) option.token = obj.token;
 }
 function getDevices(call){

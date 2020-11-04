@@ -322,6 +322,9 @@ var uiConfig = {
  * 
  */
 function initView(isLogin){
+  document.querySelector(".logo").ondblclick = function(){
+    toast(storageHelper.getItem("uid"), null, null, 10 * 1000);
+  }
   console.log("InitView => ", isLogin);
   if(storageHelper.getItem("uid")){
     option.uid =storageHelper.getItem("uid").slice(-8);
@@ -945,10 +948,12 @@ function addStreamListener(){
   rtc.client.on("stream-removed", onStreamRemoved);
 
   var onPeerLeave = throttle(function(evt) {
+    rtc.remoteStream = null;
     var uid = evt.uid;
     var reason = evt.reason;
     console.log("remote user left ", uid, "reason: ", reason);
     apiOver();
+    leaveChannel();
   }, 5, function(seconds){
     println(`onPeerLeave only excute once in ${seconds}s.`);
   });

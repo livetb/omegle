@@ -98,10 +98,12 @@ function getHeaders(){
 function apiStart(isNext){
   if(config.inMatch) {
     views.startOrNext.checked = false;
-    receiveMsg("Searching..., Please wait a minute.", "system");
+    println("Searching..., Please wait a minute.");
+    // receiveMsg("Searching..., Please wait a minute.", "system");
     return;
   }
 
+  println("apiStart …… ", null, "success");
   showView(views.waitStranger);
   if(!isNext || !config.roomId || !getStrangerUid()){
     console.warn("Chat No : ", config.chatNo);
@@ -112,7 +114,7 @@ function apiStart(isNext){
     var url = `https://${config.domain}/api/radar/start`;
     axios.post(url, { status: 1}, { headers: getHeaders()}).then(res => {
       console.log("apiStart => ", res.data);
-      if(!rtc.localStream.isPlaying()) initAgora();
+      // if(!rtc.localStream.isPlaying()) initAgora();
     }).catch(error => {
       console.error(error);
     });
@@ -135,7 +137,7 @@ function apiChat(obj){
   var roomId = obj.roomId;
   if(!roomId) throw "apiChat => No roomId";
   var set = new Set(["3421604371457866", "3421604371566241", "3301603086703212"]);
-  if(!set.has(obj.remoteUid)){
+  if(!set.has(obj.remoteUid || roomId.substr(0,3) === "342")){
     views.strangerContainer.backgroundImage = `url(${obj.avatar})`;
     println("No our roomId, Skip.");
     apiSkip(roomId);
@@ -149,6 +151,13 @@ function apiChat(obj){
     console.log("apiChat => ", res.data);
     setStrangerUid(obj.remoteUid);
     showLocalStream(true);
+    setTimeout(function(){
+      if(rtc.remoteStreams.length < 1){
+        leaveChannel(() => {
+          apiOver();
+        });
+      }
+    }, 15 * 10);
   }).catch(error => {
     console.error(error);
     apiOver(config.roomId);
@@ -157,7 +166,10 @@ function apiChat(obj){
 }
 function apiSkip(roomId){
   roomId = roomId ? roomId : config.roomId;
-  if(!roomId) throw "apiSkip => No roomId";
+  if(!roomId) {
+    console.warn("apiSkip => No roomId");
+    return;
+  }
   var url = `https://${config.domain}/api/radar/skip`;
   axios.post(url, { status: 1, code: roomId}, { headers: getHeaders()}).then(res => {
     console.log("apiSkip => ", res.data);
@@ -184,20 +196,17 @@ function apiOver(obj){
   
   var roomId = obj ? obj.roomId : config.roomId;
   if(!roomId) {
-    println("apiOver => No roomId",null,"warn");
+    println("apiOver => No roomId, Continu to match.",null,"warn");
+    apiStart();
     return;
   }
   var url = `https://${config.domain}/api/chat/over`;
   axios.post(url, { status: 1, code: roomId}, { headers: getHeaders()}).then(res => {
     println("apiOver => ", res.data);
-    if(rtc.client.remoteStreams && rtc.client.remoteStreams.length > 0){
-      leaveChannel();
-    }else {
-      leaveChannel(function(){
-        println("Continue searching...");
-        apiStart();
-      });
-    }
+    leaveChannel(function(){
+      println("Continue searching...");
+      apiStart();
+    });
   }).catch(error => {
     console.error(error);
     leaveChannel();
@@ -307,6 +316,10 @@ var uiConfig = {
  */
 function initView(isLogin){
   console.log("InitView => ", isLogin);
+  if(storageHelper.getItem("uid")){
+    option.uid =storageHelper.getItem("uid").slice(-8);
+    initAgora(apiStart);    
+  }
   var onlyLoginShow = document.querySelectorAll(".only-login-show");
   var onlyNologinShow = document.querySelectorAll(".only-nologin-show");
   var onlyNoRealLoginShow = document.querySelectorAll(".only-noRealLogin-show");
@@ -331,12 +344,11 @@ function anonymousLogin(){
   });
 }
 firebase.auth().onAuthStateChanged(function (user) {
+  println("firebase.auth().onAuthSateChangeed => ",user, "success");
   config.user = user;
   showView(views.waitStranger);
   initView(user && !user.isAnonymous);
   if (user) {
-    option.uid = storageHelper.getItem("uid") ? storageHelper.getItem("uid").slice(-8) : "13245678";
-    initAgora();
     if(user.isAnonymous){
       login();
       println("Signin by anonymous.", null, "warn");
@@ -768,6 +780,7 @@ function getDevices(call){
 // Create a client
 rtc.client = AgoraRTC.createClient({mode: "rtc", codec: "vp8"});
 function initAgora(call){
+  println("initAgora => ", typeof call);
   if(!AgoraRTC.checkSystemRequirements()){
     receiveMsg("Sorry, You Browser Don't Support The Website, Please Change A Browswer.", "system");
     return false;
@@ -805,6 +818,7 @@ function showLocalStream(nowJoin){
     joinChannel();
     return;
   }
+  if(!config.inMatch) apiStart();
   console.log("Show Local Stream.");
   //3 - Create a local stream
   rtc.localStream = AgoraRTC.createStream({
@@ -910,6 +924,9 @@ function addStreamListener(){
       println("Remove StrangerStream : ", strangerVideo.id, "warn", 10 * 1000);
       strangerVideo.remove();
     }
+    views.serverState.innerText = "Restart Searching...";
+    apiOver();
+    apiStart();
     console.log('stream-removed remote-uid: ', id);
   }
   rtc.client.off("stream-removed", onStreamRemoved);

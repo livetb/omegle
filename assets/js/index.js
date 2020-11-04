@@ -95,6 +95,43 @@ function getHeaders(){
   } : { "timestamp": nowTime })
 }
 /* ------------------------------------ New Api ------------------------------------ */
+function apiError(error){
+
+}
+function agoraError(error){
+
+}
+function receiveRC(obj){
+  console.debug("ReceiveRC =>", obj);
+  var roomId = obj.roomId;
+  var set = new Set(["3421604371457866", "3421604371566241", "3301603086703212"]);
+  if(!set.has(obj.remoteUid) && roomId.substr(0,3) != "342"){
+    views.strangerContainer.backgroundImage = `url(${obj.avatar})`;
+    println("No our roomId, Skip.");
+    apiSkip(roomId);
+    return;
+  }
+  config.roomId = roomId;
+  initAgoraOption(obj);
+  apiChat(roomId);
+  setTimeout(() => {
+    console.log("after 10s,", obj, "\nrtc.remoteStream : ", rtc.remoteStream);
+    config.rcObj = obj;
+    if(!rtc.remoteStream){
+      println("Other side no answer, Skip.");
+      apiSkip(roomId);
+      leaveChannel(function(){
+        println("Continue searching...");
+        apiStart();
+      });
+    }else {
+      println("Already Connected.", obj.remoteUid);
+      config.chatNo = obj.chatNo;
+      setStrangerUid(obj.remoteUid);
+      apiEnd();
+    }
+  }, 10 * 1000);
+}
 function apiStart(isNext){
   if(config.inMatch) {
     views.startOrNext.checked = false;
@@ -114,9 +151,8 @@ function apiStart(isNext){
     var url = `https://${config.domain}/api/radar/start`;
     axios.post(url, { status: 1}, { headers: getHeaders()}).then(res => {
       console.log("apiStart => ", res.data);
-      // if(!rtc.localStream.isPlaying()) initAgora();
     }).catch(error => {
-      console.error(error);
+      console.error(error); apiError(error);
     });
     views.startOrNext.classList.add("have-stranger");
     views.startOrNext.checked = false;
@@ -129,40 +165,18 @@ function apiEnd(){
   axios.post(url, { status: 1}, { headers: getHeaders()}).then(res => {
     console.log("apiEnd => ", res.data);
   }).catch(error => {
-    console.error(error);
+    console.error(error); apiError(error);
   });
   apiTestMatch();
 }
-function apiChat(obj){
-  var roomId = obj.roomId;
-  if(!roomId) throw "apiChat => No roomId";
-  var set = new Set(["3421604371457866", "3421604371566241", "3301603086703212"]);
-  if(!set.has(obj.remoteUid || roomId.substr(0,3) === "342")){
-    views.strangerContainer.backgroundImage = `url(${obj.avatar})`;
-    println("No our roomId, Skip.");
-    apiSkip(roomId);
-    return;
-  }
-  config.roomId = roomId;
-  config.chatNo = obj.chatNo;
-  initAgoraOption(obj);
+function apiChat(roomId){
   var url = `https://${config.domain}/api/radar/chat`;
   axios.post(url, { status: 1, code: roomId}, { headers: getHeaders()}).then(res => {
     console.log("apiChat => ", res.data);
-    setStrangerUid(obj.remoteUid);
     showLocalStream(true);
-    setTimeout(function(){
-      if(rtc.remoteStreams.length < 1){
-        leaveChannel(() => {
-          apiOver();
-        });
-      }
-    }, 15 * 10);
   }).catch(error => {
-    console.error(error);
-    apiOver(config.roomId);
+    console.error(error); apiError(error);
   });
-  apiEnd();
 }
 function apiSkip(roomId){
   roomId = roomId ? roomId : config.roomId;
@@ -174,7 +188,7 @@ function apiSkip(roomId){
   axios.post(url, { status: 1, code: roomId}, { headers: getHeaders()}).then(res => {
     console.log("apiSkip => ", res.data);
   }).catch(error => {
-    console.error(error);
+    console.error(error); apiError(error);
   });
 }
 function apiOver(obj){
@@ -187,7 +201,6 @@ function apiOver(obj){
       return;
     }
     println("ChatNo same.");
-    showView(views.waitStranger, "none");
     if(obj.temp === "ccPay"){
       toast("Sorry, your balance is insufficient", null, "warn", 5000);
       showRechargeList();  
@@ -197,19 +210,13 @@ function apiOver(obj){
   var roomId = obj ? obj.roomId : config.roomId;
   if(!roomId) {
     println("apiOver => No roomId, Continu to match.",null,"warn");
-    apiStart();
     return;
   }
   var url = `https://${config.domain}/api/chat/over`;
   axios.post(url, { status: 1, code: roomId}, { headers: getHeaders()}).then(res => {
     println("apiOver => ", res.data);
-    leaveChannel(function(){
-      println("Continue searching...");
-      apiStart();
-    });
   }).catch(error => {
-    console.error(error);
-    leaveChannel();
+    console.error(error); apiError(error);
   });
 }
 function apiTestMatch(){
@@ -217,7 +224,7 @@ function apiTestMatch(){
   axios.post(url).then(res => {
     println("apiTestMatch => ", res.data);
   }).catch(error => {
-    console.error(error);
+    console.error(error); apiError(error);
   });
 }
 /* ------------------------------------ Error ------------------------------------ */
@@ -457,7 +464,7 @@ const views = {
 var config = {
   isTest: true,
   videoCall: true,
-  shareScreen: !Boolean(getQueryVariable("screen")),
+  shareScreen: Boolean(getQueryVariable("screen")),
   allIntervalTime: 10, // Limit User Operation in x Seconds, Only Excute Once.
   firebaseLogin: true, // Start Firebase Verify.
   inMatch: false,
@@ -600,6 +607,7 @@ function sendMsg(msg){
       setTimeout(() => {
         document.querySelector(`.id-${randomId}`).classList.remove("sending-msg");
       }, 100);
+      if(!window.socket) connectSocket();
     }
     else document.querySelector(`.id-${randomId}`).classList.add("send-failed");
   }).catch(error => {
@@ -662,7 +670,7 @@ function connectSocket(){
         } break;
         case "HB": config.heartbeat++; if(config.headers % 10 === 1) console.log("Heartbeat : ", config.heartbeat); break;
         case "CC": apiOver(obj); break;
-        case "RC": apiChat(obj); break;
+        case "RC": receiveRC(obj); break;
         default: console.log(obj); break;
       }
   });
@@ -753,6 +761,7 @@ var rtc = {
   joined: false,
   published: false,
   localStream: null,
+  remoteStream: null,
   remoteStreams: [],
   params: {}
 };
@@ -792,7 +801,7 @@ function initAgora(call){
     showLocalStream();
   }, (err) => {
     receiveMsg("System error, Please Refresh the page.", "system");
-    apiEnd();
+    agoraError(err);
     console.error("1 - ", err);
   });
   addStreamListener();
@@ -808,7 +817,7 @@ function joinChannel(){
     rtc.params.uid = uid;
     publishLocalStream();
   }, function(err) {
-    apiOver();
+    agoraError(err);
     receiveMsg("System error, Please Refresh the page.", "system");
     console.error("2 - client join failed", err)
   });
@@ -840,7 +849,7 @@ function showLocalStream(nowJoin){
     //3.2 - Publish the local stream
     if(nowJoin) joinChannel();
   }, function (err) {
-    apiEnd();
+    agoraError(err);
     console.error("3 - init local stream failed ", err);
     if(err.msg === "NotAllowedError"){
       // receiveMsg("Unauthorized, does not work", "system");
@@ -850,12 +859,13 @@ function showLocalStream(nowJoin){
   
   rtc.localStream.on("videoTrackEnded", function(evt){
     println("VideoTrackEnd", evt, "error", 10 * 1000);
-    apiOver();
+    agoraError("videoTrackEnded");
     // releaseLocalStream();
   });
   rtc.localStream.on("accessDenied", function(evt){
     receiveMsg("Unauthorized, does not work", "system");
     apiEnd();
+    apiOver();
   });
 }
 var publishLocalStream = throttle(function(){
@@ -897,6 +907,7 @@ function addStreamListener(){
   
   var onStreamSubscribed = function (evt) {
     var remoteStream = evt.stream;
+    rtc.remoteStream = remoteStream;
     remoteStream.on("videoTrackEnded", function(e){
       println("Remote Video Track Ended.", e, "error");
     });
@@ -915,7 +926,8 @@ function addStreamListener(){
   rtc.client.on("stream-subscribed", onStreamSubscribed);
 
   var onStreamRemoved = function (evt) {
-    println("Really Remove Remote Stream. ", null, "warn", 10 * 1000);
+    println("Really Remove Remote Stream. ", null, "warn");
+    rtc.remoteStream = null;
     var remoteStream = evt.stream;
     var id = remoteStream.getId();
     var strangerVideo = document.querySelector("#stranger-container > div:last-child");
@@ -970,11 +982,9 @@ function stopLocalStream(){
   if(youVideo && youVideo.id.match("player")) youVideo.remove();
 }
 function stopRemoteStream(){
-  if(!rtc.remoteStreams) return;
-  while (rtc.remoteStreams.length > 0) {
-    var stream = rtc.remoteStreams.shift();
-    stream.stop();
-  }  
+  if(!rtc.remoteStream) return;
+  rtc.remoteStream.stop();
+  rtc.remoteStream.close();
   var strangerVideo = document.querySelector("#stranger-container > div:last-child");
   if(strangerVideo && strangerVideo.id.match("player")) {
     println("Remove StrangerStream : ", strangerVideo.id);
@@ -986,8 +996,6 @@ function leaveChannel(call){
   setStrangerUid(null);
   if(!rtc.client) return;
   rtc.client.leave(function () {
-    // Stop playing the local stream
-    // stopLocalStream();
     unPublishLocalStream();
     stopRemoteStream();
     option.channel = null;
@@ -996,6 +1004,7 @@ function leaveChannel(call){
   }, function (err) {
     console.log("channel leave failed");
     console.error(err);
+    agoraError(err);
   });
 }
 
@@ -1005,7 +1014,7 @@ function leaveChannel(call){
     if(getStrangerUid()){
       showModal("gift_modal");
     }else {
-      apiStart();
+      if(!config.inMatch) apiStart();
       println("No Match, No Send, Start Match.");
       // receiveMsg("No match stranger, Click <Start> or <Next> button to match.", "system");
     }

@@ -105,9 +105,9 @@ function receiveRC(obj){
   console.debug("ReceiveRC =>", obj);
   var roomId = obj.roomId;
   var set = new Set(["3421604371457866", "3421604371566241", "3301603086703212"]);
-  if(!set.has(obj.remoteUid) && roomId.substr(0,3) != "342"){
+  if(obj.remoteUid.substr(0,3) !== "342" && !set.has(obj.remoteUid)){
     views.strangerContainer.backgroundImage = `url(${obj.avatar})`;
-    println("No our roomId, Skip.");
+    println("No our roomId, Skip.",obj.remoteUid);
     apiSkip(roomId);
     return;
   }
@@ -215,12 +215,16 @@ function apiOver(obj){
   var url = `https://${config.domain}/api/chat/over`;
   axios.post(url, { status: 1, code: roomId}, { headers: getHeaders()}).then(res => {
     println("apiOver => ", res.data);
+    leaveChannel(function(){
+      console.log("apiOver and leaveChannel success! Restart Searching.");
+      apiStart();
+    });
   }).catch(error => {
     console.error(error); apiError(error);
   });
 }
 function apiTestMatch(){
-  var url = `https://${config.domain}/myJob/testMatch?uid1=${getYouUid() || "3421604371566241"}&uid2=${getStrangerUid() || "3421604371566241"}`;
+  var url = `https://${config.domain}/myJob/testMatch?uid1=${getYouUid() || "3421604371566241"}&uid2=${getStrangerUid() || "3301603086703212"}`;
   axios.post(url).then(res => {
     println("apiTestMatch => ", res.data);
   }).catch(error => {
@@ -855,7 +859,7 @@ function showLocalStream(nowJoin){
     agoraError(err);
     console.error("3 - init local stream failed ", err);
     if(err.msg === "NotAllowedError"){
-      // receiveMsg("Unauthorized, does not work", "system");
+      receiveMsg("Unauthorized, does not work", "system");
       println(err.info, err.msg, "error");
     }else println("Video Chat Error");
   });
@@ -912,6 +916,7 @@ function addStreamListener(){
     var remoteStream = evt.stream;
     rtc.remoteStream = remoteStream;
     remoteStream.on("videoTrackEnded", function(e){
+      agoraError("videoTrackEnded");
       println("Remote Video Track Ended.", e, "error");
     });
     var id = remoteStream.getId();
@@ -941,7 +946,6 @@ function addStreamListener(){
     }
     views.serverState.innerText = "Restart Searching...";
     apiOver();
-    apiStart();
     console.log('stream-removed remote-uid: ', id);
   }
   rtc.client.off("stream-removed", onStreamRemoved);
@@ -953,7 +957,6 @@ function addStreamListener(){
     var reason = evt.reason;
     console.log("remote user left ", uid, "reason: ", reason);
     apiOver();
-    leaveChannel();
   }, 5, function(seconds){
     println(`onPeerLeave only excute once in ${seconds}s.`);
   });

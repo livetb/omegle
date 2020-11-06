@@ -401,7 +401,7 @@ function login(successTips, failedTips){
     loginId: config.user.uid,
     nickName: config.user.displayName,
     sign: md5Login(config.user.uid, nowTime),
-    appId: 410,
+    appId: 342,
     appKey: "fjsihaueoewh36585489848jhjjoidfggeeu342",
     thirdType: 6,
     regionCode: getRegion()
@@ -845,10 +845,10 @@ function showLocalStream(nowJoin){
     screen: config.shareScreen,
   });
   //3 - Initialize the local stream
+  // rtc.localStream.setScreenProfile("480p_2");
   // rtc.localStream.setVideoProfile("360p");
   // videoProfile_default: 480p
   // rtc.localStream.setVideoProfile("240p_3");
-  rtc.localStream.setVideoProfile("480p_2");
   rtc.localStream.init(function () {
     console.log("3 - init local stream success");
     //3.1 - play stream with html element id "local_stream"

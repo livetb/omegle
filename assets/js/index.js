@@ -104,13 +104,13 @@ function agoraError(error){
 function receiveRC(obj){
   console.debug("ReceiveRC =>", obj);
   var roomId = obj.roomId;
-  var set = new Set(["3421604371457866", "3421604371566241", "3301603086703212"]);
-  if(obj.remoteUid.substr(0,3) !== "342" && !set.has(obj.remoteUid)){
-    views.strangerContainer.backgroundImage = `url(${obj.avatar})`;
-    println("No our roomId, Skip.",obj.remoteUid);
-    apiSkip(roomId);
-    return;
-  }
+  // var set = new Set(["3421604371457866", "3421604371566241", "3301603086703212"]);
+  // if(obj.remoteUid.substr(0,3) !== "342" && !set.has(obj.remoteUid)){
+  //   views.strangerContainer.backgroundImage = `url(${obj.avatar})`;
+  //   println("No our roomId, Skip.",obj.remoteUid);
+  //   apiSkip(roomId);
+  //   return;
+  // }
   config.roomId = roomId;
   initAgoraOption(obj);
   apiChat(roomId);
@@ -120,6 +120,7 @@ function receiveRC(obj){
     if(!rtc.remoteStream){
       println("Other side no answer, Skip.");
       apiSkip(roomId);
+      apiTestMatch();
       leaveChannel(function(){
         println("Continue searching...");
         apiStart();
@@ -1178,8 +1179,7 @@ function rechargeFailed(obj){
   receiveMsg("Recharge Failed, Please refresh the page and try again", "system");
 }
 /* ------------------------------------ Stripe ------------------------------------ */
-const stripe = Stripe("pk_test_kKiIIn5jbIixQ96SV4NpPZyf00hulVQYuC");
-//  - pk_live_Zt23ptBqWWJ8as6k2MBUF3xn00XviuaLpZ
+const stripe = Stripe("pk_live_Zt23ptBqWWJ8as6k2MBUF3xn00XviuaLpZ");
 function rechargeByStripe(productIosId, rechargeItem){
   document.querySelector("#stripe_modal .diamond-amount").innerText = rechargeItem.diamond;
   document.querySelector("#stripe_modal .pay-money").innerText = rechargeItem.money;

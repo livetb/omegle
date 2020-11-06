@@ -163,7 +163,7 @@ input[type="number"]{
   font-weight: 600;
 }
 .online-now::after {
-  content: "online now";
+  content: "  online now";
   font-size: 1rem;
   line-height: inherit;
   color: #89c2fa;
@@ -371,7 +371,7 @@ input#start-or-next:checked + label + #cancel-next {
   font-weight: 500;
 }
 p#server_state {
-  position: sticky;
+  display: none;
   top: 0;
   box-shadow: 0 0 0px 0.5rem #fff;
   background-color: #FFF;
@@ -450,6 +450,7 @@ p#server_state {
   margin: 0;
 }
 #gift {
+  transform: scale(1.1);
   cursor: pointer;
   width: 3rem;
 }
@@ -564,7 +565,7 @@ p#server_state {
   z-index: 1000;
   width: 100%;
   height: 100vh;
-  background-color: rgba(0, 0, 0, 0.35);
+  background-color: rgba(0, 0, 0, 0.75);
   left: 0;
   top: 0;
   display: none;

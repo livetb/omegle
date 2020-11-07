@@ -103,6 +103,10 @@ function agoraError(error){
 }
 function receiveRC(obj){
   console.debug("ReceiveRC =>", obj);
+  if(!config.isStart){
+    console.log("receive RC, but I no start, return.");
+    return;
+  }
   var roomId = obj.roomId;
   // var set = new Set(["3421604371457866", "3421604371566241", "3301603086703212"]);
   // if(obj.remoteUid.substr(0,3) !== "342" && !set.has(obj.remoteUid)){
@@ -117,7 +121,7 @@ function receiveRC(obj){
   setTimeout(() => {
     console.log("after 10s,", obj, "\nrtc.remoteStream : ", rtc.remoteStream);
     config.rcObj = obj;
-    if(!rtc.remoteStream){
+    if(!config.isJoin){
       println("Other side no answer, Skip.");
       apiSkip(roomId);
       apiTestMatch();
@@ -137,18 +141,21 @@ function apiStart(isNext){
   if(config.inMatch) {
     views.startOrNext.checked = false;
     println("Searching..., Please wait a minute.");
-    // receiveMsg("Searching..., Please wait a minute.", "system");
+    // receiveMsg("Searching..., Please wait a minute.");
     return;
   }
 
   println("apiStart …… ", null, "success");
+  config.isStart = true;
   showView(views.waitStranger);
   if(!isNext || !config.roomId || !getStrangerUid()){
+    config.inMatch = true;
     console.warn("Chat No : ", config.chatNo);
     if(config.chatNo){
       println("Have chat, Over the chat.");
       apiOver();
     }
+    if(!rtc.localStream) initAgora();
     var url = `https://${config.domain}/api/radar/start`;
     axios.post(url, { status: 1}, { headers: getHeaders()}).then(res => {
       console.log("apiStart => ", res.data);
@@ -157,10 +164,10 @@ function apiStart(isNext){
     });
     views.startOrNext.classList.add("have-stranger");
     views.startOrNext.checked = false;
-    config.inMatch = true;
   }else println("Really Next? Click <Next> button to match next starnger.", "system");
 }
 function apiEnd(){
+  config.isStart = false;
   config.inMatch = false;
   var url = `https://${config.domain}/api/radar/end`;
   axios.post(url, { status: 1}, { headers: getHeaders()}).then(res => {
@@ -333,7 +340,6 @@ function initView(isLogin){
   console.log("InitView => ", isLogin);
   if(storageHelper.getItem("uid")){
     option.uid =storageHelper.getItem("uid").slice(-8);
-    initAgora(apiStart);    
   }
   var onlyLoginShow = document.querySelectorAll(".only-login-show");
   var onlyNologinShow = document.querySelectorAll(".only-nologin-show");
@@ -799,8 +805,7 @@ rtc.client = AgoraRTC.createClient({mode: "rtc", codec: "vp8"});
 function initAgora(call){
   println("initAgora => ", typeof call);
   if(!AgoraRTC.checkSystemRequirements()){
-    receiveMsg("Sorry, You Browser Don't Support The Website, Please Change A Browswer.", "system");
-    return false;
+    receiveMsg("Please allow your browser to use your microphone and camera for video chat.", "system");
   }
   console.log("initAgora : ", option.uid);
   //1 - Initialize the client
@@ -808,7 +813,7 @@ function initAgora(call){
     console.log("1 - init success");
     showLocalStream();
   }, (err) => {
-    receiveMsg("System error, Please Refresh the page.", "system");
+    receiveMsg("System error, Please Refresh the page.");
     agoraError(err);
     console.error("1 - ", err);
   });
@@ -819,24 +824,27 @@ function joinChannel(){
     receiveMsg("Missing parameters", "system");
     return;
   }
+  config.isJoin = true;
   // Join a channel
   rtc.client.join(option.token ? option.token : null, option.channel, option.uid ? +option.uid : null, function (uid) {
     console.log("2 - join channel: " + option.channel + " success, uid: " + uid);
     rtc.params.uid = uid;
     publishLocalStream();
   }, function(err) {
+    config.isJoin = false;
     agoraError(err);
     receiveMsg("System error, Please Refresh the page.", "system");
     console.error("2 - client join failed", err)
   });
 }
 function showLocalStream(nowJoin){
-  if(rtc.localStream && nowJoin){
-    joinChannel();
-    return;
-  }
+  if(nowJoin && !config.isJoin) joinChannel();
   if(!config.inMatch) apiStart();
   console.log("Show Local Stream.");
+  if(rtc.localStream && rtc.localStream.isPlaying()){
+    console.log("rtc.localstream already exists, continue.");
+    return;
+  }
   //3 - Create a local stream
   rtc.localStream = AgoraRTC.createStream({
     streamID: option.uid, //rtc.params.uid
@@ -855,12 +863,16 @@ function showLocalStream(nowJoin){
     console.log("3.1 - play local stream");
     rtc.localStream.play("you-container",  {fit: "contain"});
     //3.2 - Publish the local stream
-    if(nowJoin) joinChannel();
+    if(nowJoin && !config.isJoin) joinChannel();
   }, function (err) {
+    if(nowJoin && !config.isJoin) {
+      console.log(err, "continue join channel.");
+      joinChannel();
+    }
     agoraError(err);
     console.error("3 - init local stream failed ", err);
     if(err.msg === "NotAllowedError"){
-      receiveMsg("Unauthorized, does not work", "system");
+      receiveMsg("Please allow your browser to use your microphone and camera for video chat.", "system");
       println(err.info, err.msg, "error");
     }else println("Video Chat Error");
   });
@@ -868,12 +880,13 @@ function showLocalStream(nowJoin){
   rtc.localStream.on("videoTrackEnded", function(evt){
     println("VideoTrackEnd", evt, "error", 10 * 1000);
     agoraError("videoTrackEnded");
-    // releaseLocalStream();
   });
   rtc.localStream.on("accessDenied", function(evt){
-    receiveMsg("Unauthorized, does not work", "system");
-    apiEnd();
-    apiOver();
+    // receiveMsg("Unauthorized, does not work", "system");
+    // apiEnd();
+    // apiOver();
+    println("Unauthorized, continue.");
+    stopLocalStream();
   });
 }
 var publishLocalStream = throttle(function(){
@@ -912,7 +925,7 @@ function addStreamListener(){
   }
   rtc.client.off("stream-added", onStreamAdd)
   rtc.client.on("stream-added", onStreamAdd);
-  
+  // 
   var onStreamSubscribed = function (evt) {
     var remoteStream = evt.stream;
     rtc.remoteStream = remoteStream;
@@ -936,24 +949,22 @@ function addStreamListener(){
 
   var onStreamRemoved = function (evt) {
     println("Really Remove Remote Stream. ", null, "warn");
-    rtc.remoteStream = null;
-    var remoteStream = evt.stream;
-    var id = remoteStream.getId();
-    var strangerVideo = document.querySelector("#stranger-container > div:last-child");
-    if(strangerVideo.id.match("player")) {
-      remoteStream.stop(strangerVideo.id);
-      println("Remove StrangerStream : ", strangerVideo.id, "warn", 10 * 1000);
-      strangerVideo.remove();
-    }
     views.serverState.innerText = "Restart Searching...";
     apiOver();
     console.log('stream-removed remote-uid: ', id);
   }
   rtc.client.off("stream-removed", onStreamRemoved);
   rtc.client.on("stream-removed", onStreamRemoved);
-
+  // 
+  var onPeerOnline = function(evt){
+    console.log("peer-online", evt.uid);
+    config.remoteOnline = true;
+  }  
+  rtc.client.off("peer-online", onPeerOnline);
+  rtc.client.on("peer-online", onPeerOnline);
+  // 
   var onPeerLeave = throttle(function(evt) {
-    rtc.remoteStream = null;
+    config.remoteOnline = false;
     var uid = evt.uid;
     var reason = evt.reason;
     console.log("remote user left ", uid, "reason: ", reason);
@@ -984,16 +995,20 @@ function addStreamListener(){
 }
 function stopLocalStream(){
   if(!rtc.localStream) return;
-  rtc.localStream.stop();
-  rtc.localStream.close();
+  if(rtc.localStream.isPlaying()){
+    rtc.localStream.stop();
+    rtc.localStream.close();
+  }
   // Stop playing the remote streams and remove the views
   var youVideo = document.querySelector("#you-container > div:last-child");
   if(youVideo && youVideo.id.match("player")) youVideo.remove();
 }
 function stopRemoteStream(){
-  if(!rtc.remoteStream) return;
-  rtc.remoteStream.stop();
-  rtc.remoteStream.close();
+  if(rtc.remoteStream){
+    rtc.remoteStream.stop();
+    rtc.remoteStream.close();
+    rtc.remoteStream = null;
+  }
   var strangerVideo = document.querySelector("#stranger-container > div:last-child");
   if(strangerVideo && strangerVideo.id.match("player")) {
     println("Remove StrangerStream : ", strangerVideo.id);
@@ -1339,7 +1354,7 @@ function saveBaseinfo(){
   console.log("Nickname: ",nickname);
   // console.log("Age: ",age);
   if(!nickname) {
-    receiveMsg("Your nickname is invalid value, Please check again.", "system");
+    println("Your nickname is invalid value, Please check again.");
     return;
   }
   var form = new FormData();

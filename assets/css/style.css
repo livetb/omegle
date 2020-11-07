@@ -432,10 +432,10 @@ p#server_state {
   font-weight: 600;
   line-height: 1.2rem;
 }
-.system-msg::before {
+/* .system-msg::before {
   content: "System: ";
   color: #fb05ef;
-}
+} */
 
 #conversation-bar {
   display: flex;

@@ -201,6 +201,7 @@ p.header-text {
   height: 2.5rem;
 }
 #wait_stranger {
+  display: none;
   width: 100%;
   height: 100%;
   display: none;

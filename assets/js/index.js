@@ -181,6 +181,10 @@ function apiChat(roomId){
   var url = `https://${config.domain}/api/radar/chat`;
   axios.post(url, { status: 1, code: roomId}, { headers: getHeaders()}).then(res => {
     console.log("apiChat => ", res.data);
+    // if(res.data.status !== 0){
+    //   alert(res.data.msg);
+    //   return;
+    // }
     showLocalStream(true);
   }).catch(error => {
     console.error(error); apiError(error);
@@ -225,6 +229,7 @@ function apiOver(obj){
     println("apiOver => ", res.data);
     leaveChannel(function(){
       console.log("apiOver and leaveChannel success! Restart Searching.");
+      config.roomId = null;
       apiStart();
     });
   }).catch(error => {
@@ -367,7 +372,7 @@ function anonymousLogin(){
 firebase.auth().onAuthStateChanged(function (user) {
   println("firebase.auth().onAuthSateChangeed => ",user, "success");
   config.user = user;
-  showView(views.waitStranger);
+  // showView(views.waitStranger);
   initView(user && !user.isAnonymous);
   if (user) {
     if(user.isAnonymous){
@@ -756,6 +761,7 @@ function getYouUid(){
 
 function addChatListener(){
   views.startOrNext.addEventListener("change", function(){
+    this.checked = false; // 保持未选中状态
     var isNext = this.checked;
     if(!config.user){
       this.checked = false;
@@ -764,9 +770,10 @@ function addChatListener(){
     }
     apiStart(isNext);
   });
-  views.cancelNext.addEventListener("click", function(){
-    views.startOrNext.checked = false;
-  });
+  // 去除Next按钮切换动画
+  // views.cancelNext.addEventListener("click", function(){
+  //   views.startOrNext.checked = false;
+  // });
 }
 addChatListener();
 /* ------------------------------------ Agora ------------------------------------ */
